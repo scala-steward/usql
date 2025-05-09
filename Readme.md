@@ -3,10 +3,17 @@
 usql is a small jdbc wrapper to automate recurring patterns and
 to simplify writing SQL typical Actions in the age of direct style scala.
 
-Note: this is Beta software. Only Postgres and H2 are supported yet (altough it's 
-easy wo write more Profiles).
+Note: this is Beta software. Only Postgres and H2 are supported yet (although it's 
+easy to write more Profiles).
 
 ## Installation
+
+Version Matrix
+
+| Version | JVM Version | Scala Version |
+|---------|-------------|---------------|
+| 0.3.x   | 21+         | 3.7.x+        |
+| 0.2.x   | 17+         | 3.3.x+        |           
 
 Add to build.sbt
 
@@ -157,7 +164,7 @@ case class Person(
  ) derives SqlTabular
 
 object Person extends KeyedCrudBase[Int, Person] {
-  override val keyColumn: SqlIdentifier = "id"
+  override def key: KeyColumnPath = cols.id
 
   override def keyOf(value: Person): Int = value.id
 
@@ -171,11 +178,21 @@ Person.update(Person(6, "Franziska"))
 println(Person.findByKey(6)) // Person(6, Franziska)
 ```
 
+## Scala 3.7.0+ Named Tuples
+
+```scala3
+// Person.col.id will be automatically checked.
+val allAgain: Vector[(Int, String)] =
+  sql"SELECT ${Person.cols.id}, ${Person.cols.name} FROM ${Person}".query.all[(Int, String)]()
+
+println(s"allAgain=${allAgain}")
+```
+
 # Core Types
 
 - `DataType` a type class which derives how to fetch a Type `T` from a `ResultSet` and how to store it in a `PreparedStatement`
-- `ResultRowDecoder` type class for fetching tuples / values from `ResultSet`
-- `ParameterFiller` type class for filling tuples / values into a `PreparedStatement`
+- `RowDecoder` type class for fetching tuples / values from `ResultSet`
+- `RowEncoder` type class for filling tuples / values into a `PreparedStatement`
 - `SqlIdentifier` an SQL identifier, quoted if necessary.
 - `RawSql` Raw SQL Queries
 - `Sql` interpolated SQL Queries

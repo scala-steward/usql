@@ -1,46 +1,23 @@
 package usql.dao
 
-import usql.{DataType, ParameterFiller, ResultRowDecoder, SqlIdentifier, SqlIdentifiers}
+import usql.{DataType, RowEncoder, RowDecoder, SqlIdentifier}
 
+import scala.annotation.Annotation
 import scala.compiletime.{erasedValue, summonInline}
 import scala.deriving.Mirror
 import scala.quoted.{Expr, Quotes, Type}
+import scala.reflect.ClassTag
 
 object Macros {
-  inline def buildColumnar[T <: Product](
-      using nm: NameMapping,
-      mirror: Mirror.ProductOf[T]
-  ): SqlColumnar.SimpleColumnar[T] = {
-    val labels: List[String]                        = deriveLabels[T]
-    val nameAnnotations: List[Option[ColumnName]]   = columnNameAnnotations[T]
-    val groupAnnotations: List[Option[ColumnGroup]] = columnGroupAnnotations[T]
-    val typeInfos                                   = summonInline[TypeInfos[mirror.MirroredElemTypes]]
 
-    val columnNames = SqlIdentifiers {
-      labels.zip(nameAnnotations).zip(typeInfos.infos).zip(groupAnnotations).flatMap {
-        case (((label, nameAnnotation), _: TypeInfo.Scalar[?]), _)                       =>
-          val id = nameAnnotation.map(a => SqlIdentifier.fromString(a.name)).getOrElse(nm.columnToSql(label))
-          Some(id)
-        case (((label, nameAnnotation), c: TypeInfo.Columnar[?]), maybeColumnAnnotation) =>
-          val columnAnnotation = maybeColumnAnnotation.getOrElse(ColumnGroup())
-          val memberName       = nameAnnotation.map(_.name).getOrElse(nm.columnToSql(label).name)
-          c.columnar.columns.identifiers.map { childIdentifier =>
-            columnAnnotation.columnName(memberName, childIdentifier)
-          }
-      }
+  def getMaxOneAnnotation[T: ClassTag](in: List[Annotation]): Option[T] = {
+    in.collect { case a: T =>
+      a
+    } match {
+      case Nil       => None
+      case List(one) => Some(one)
+      case multiple  => throw new IllegalArgumentException(s"More than one annotation of same type found: ${multiple}")
     }
-
-    // RowDecoder/Parameter filler already handles nested columnar elements
-
-    val rowDecoder      = summonInline[ResultRowDecoder[mirror.MirroredElemTypes]].map(mirror.fromTuple)
-    val parameterFiller =
-      summonInline[ParameterFiller[mirror.MirroredElemTypes]].contraMap[T](x => Tuple.fromProductTyped(x)(using mirror))
-
-    SqlColumnar.SimpleColumnar(
-      columns = columnNames,
-      rowDecoder = rowDecoder,
-      parameterFiller = parameterFiller
-    )
   }
 
   /** Type info for each member, to differentiate between columnar and scalar types. */
@@ -56,18 +33,23 @@ object Macros {
   }
 
   /** Combined TypeInfos for a tuple. */
-  case class TypeInfos[T](infos: List[TypeInfo[_]])
+  case class TypeInfos[T](infos: List[TypeInfo[?]], builder: List[Any] => T)
 
   object TypeInfos {
     given forTuple[H, T <: Tuple](
         using typeInfo: TypeInfo[H],
         tailInfos: TypeInfos[T]
-    ): TypeInfos[H *: T] = TypeInfos(typeInfo :: tailInfos.infos)
-    given empty: TypeInfos[EmptyTuple] = TypeInfos(Nil)
+    ): TypeInfos[H *: T] = TypeInfos(
+      typeInfo :: tailInfos.infos,
+      builder = values => {
+        values.head.asInstanceOf[H] *: tailInfos.builder(values.tail)
+      }
+    )
+    given empty: TypeInfos[EmptyTuple] = TypeInfos(Nil, _ => EmptyTuple)
   }
 
   inline def buildTabular[T <: Product](using nm: NameMapping, mirror: Mirror.ProductOf[T]): SqlTabular[T] = {
-    val columnar = buildColumnar[T]
+    val fielded = buildFielded[T]
 
     val tableName: SqlIdentifier = tableNameAnnotation[T]
       .map { tn =>
@@ -79,9 +61,7 @@ object Macros {
 
     SqlTabular.SimpleTabular(
       tableName = tableName,
-      columnar.columns,
-      columnar.rowDecoder,
-      columnar.parameterFiller
+      fielded = fielded
     )
   }
 
@@ -123,16 +103,11 @@ object Macros {
     }
   }
 
-  /** Extract column name annotations for each column. */
-  inline def columnNameAnnotations[T]: List[Option[ColumnName]] = {
-    ${ fieldAnnotationExtractor[ColumnName, T] }
+  inline def annotationsExtractor[T]: List[List[Annotation]] = {
+    ${ annotationsExtractorImpl[T] }
   }
 
-  inline def columnGroupAnnotations[T]: List[Option[ColumnGroup]] = {
-    ${ fieldAnnotationExtractor[ColumnGroup, T] }
-  }
-
-  def fieldAnnotationExtractor[A, T](using quotes: Quotes, t: Type[T], a: Type[A]): Expr[List[Option[A]]] = {
+  def annotationsExtractorImpl[T](using quotes: Quotes, t: Type[T]): Expr[List[List[Annotation]]] = {
     import quotes.reflect.*
     val tree   = TypeRepr.of[T]
     val symbol = tree.typeSymbol
@@ -143,14 +118,45 @@ object Macros {
     Expr.ofList(
       symbol.primaryConstructor.paramSymss.flatten
         .map { sym =>
-          sym.annotations.collectFirst {
-            case term if (term.tpe <:< TypeRepr.of[A]) =>
-              term.asExprOf[A]
-          } match {
-            case None    => '{ None }
-            case Some(e) => '{ Some(${ e }) }
+          Expr.ofList {
+            sym.annotations.collect {
+              case term if (term.tpe <:< TypeRepr.of[Annotation]) =>
+                term.asExprOf[Annotation]
+            }
           }
         }
     )
   }
+
+  inline def buildFielded[T <: Product](
+      using nm: NameMapping,
+      mirror: Mirror.ProductOf[T]
+  ): SqlFielded[T] = {
+    val labels: List[String]                = deriveLabels[T]
+    val annotations: List[List[Annotation]] = annotationsExtractor[T]
+    val typeInfos                           = summonInline[TypeInfos[mirror.MirroredElemTypes]]
+    val splitter: T => List[Any]            = v => v.productIterator.toList
+
+    val fields =
+      labels.zip(annotations).zip(typeInfos.infos).map {
+        case ((label, annotations), typeInfo: TypeInfo.Scalar[?]) =>
+          val nameAnnotation = getMaxOneAnnotation[ColumnName](annotations)
+          val id             = nameAnnotation.map(a => SqlIdentifier.fromString(a.name)).getOrElse(nm.columnToSql(label))
+          val column         = SqlColumn(id, typeInfo.dataType)
+          Field.Column(label, column)
+        case ((label, annotations), c: TypeInfo.Columnar[?])      =>
+          val nameAnnotation = getMaxOneAnnotation[ColumnName](annotations)
+          val columnGroup    = getMaxOneAnnotation[ColumnGroup](annotations)
+          val mapping        = columnGroup.map(_.mapping).getOrElse(ColumnGroupMapping.Pattern())
+          val columnBaseName =
+            nameAnnotation.map(a => SqlIdentifier.fromString(a.name)).getOrElse(nm.columnToSql(label))
+          Field.Group(label, mapping, columnBaseName, c.columnar.asInstanceOf[SqlFielded[?]])
+      }
+    SqlFielded.SimpleSqlFielded(
+      fields = fields,
+      splitter = splitter,
+      builder = typeInfos.builder.andThen(mirror.fromTuple)
+    )
+  }
+
 }

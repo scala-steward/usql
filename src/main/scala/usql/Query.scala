@@ -7,9 +7,9 @@ import scala.util.Using
 case class Query(sql: SqlBase) {
 
   /** Run a query for one row. */
-  def one[T]()(using rowParser: ResultRowDecoder[T], cp: ConnectionProvider): Option[T] = {
+  def one[T]()(using rowParser: RowDecoder[T], cp: ConnectionProvider): Option[T] = {
     run { resultSet =>
-      if (resultSet.next()) {
+      if resultSet.next() then {
         Some(rowParser.parseRow(resultSet))
       } else {
         None
@@ -18,16 +18,16 @@ case class Query(sql: SqlBase) {
   }
 
   /** Run a query for all rows. */
-  def all[T]()(using rowParser: ResultRowDecoder[T], cp: ConnectionProvider): Vector[T] = {
+  def all[T]()(using rowParser: RowDecoder[T], cp: ConnectionProvider): Vector[T] = {
     run { resultSet =>
       val builder = Vector.newBuilder[T]
-      while (resultSet.next()) {
+      while resultSet.next() do {
         builder += rowParser.parseRow(resultSet)
       }
       builder.result()
     }
   }
-  
+
   /** Run with some method decoding the result set. */
   private def run[T](f: ResultSet => T)(using cp: ConnectionProvider): T = {
     sql.withPreparedStatement { statement =>

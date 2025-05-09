@@ -54,20 +54,18 @@ class SqlCrdBaseTest extends TestBaseWithH2 {
     CoordinateCrd.findAll() shouldBe empty
   }
 
-  case class SubCoord(x: Double, y: Double) derives SqlColumnar
+  case class SubCoord(x: Double, y: Double) derives SqlFielded
 
   @TableName("subcoord")
   case class WithSubCoords(
       id: Int,
       from: SubCoord,
-      @ColumnGroup("%c_to")
+      @ColumnGroup(ColumnGroupMapping.Pattern("%c_to"))
       to: SubCoord
   ) derives SqlTabular
 
   object WithSubCoords extends KeyedCrudBase[Int, WithSubCoords] {
-    override val keyColumn: SqlIdentifier = "id"
-
-    override def keyOf(value: WithSubCoords): Int = value.id
+    override def key: KeyColumnPath = cols.id
 
     override lazy val tabular: SqlTabular[WithSubCoords] = summon
   }

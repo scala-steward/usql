@@ -16,12 +16,12 @@ case class Update(sql: SqlBase) {
   /**
    * Run the update statement and get generated values. See [[java.sql.PreparedStatement.getGeneratedKeys()]]
    */
-  def runAndGetGenerated[T]()(using d: ResultRowDecoder[T], c: ConnectionProvider): T = {
+  def runAndGetGenerated[T]()(using d: RowDecoder[T], c: ConnectionProvider): T = {
     given sp: StatementPreparator = StatementPreparator.withGeneratedKeys
     sql.withPreparedStatement { statement =>
       statement.executeUpdate()
       Using.resource(statement.getGeneratedKeys) { resultSet =>
-        if (resultSet.next()) {
+        if resultSet.next() then {
           d.parseRow(resultSet)
         } else {
           throw new SqlResultMissingGenerated("Missing row for getGeneratedKeys")

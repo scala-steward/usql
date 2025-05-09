@@ -50,14 +50,26 @@ trait KeyedCrud[T] extends Crd[T] {
 /** Implementation of Crd for Tabular data. */
 abstract class CrdBase[T] extends Crd[T] {
 
-  protected given pf: ParameterFiller[T] = tabular.parameterFiller
+  protected given pf: RowEncoder[T] = tabular.rowEncoder
 
-  protected given rd: ResultRowDecoder[T] = tabular.rowDecoder
+  protected given rd: RowDecoder[T] = tabular.rowDecoder
 
+  /**
+   * Define the referenced tabular, usually implemented using `summon`. We would like to have it as a parameter, but
+   * this leads to this error https://github.com/scala/scala3/issues/22704 even when using lazy parameters.
+   */
   lazy val tabular: SqlTabular[T]
 
-  private lazy val insertStatement =
-    sql"INSERT INTO ${tabular.tableName} (${tabular.columns}) VALUES (${tabular.columns.placeholders})"
+  /** Gives access to an aliased view. */
+  def alias(name: String): Alias[T] = tabular.alias(name)
+
+  /** Gives access to the columns */
+  def cols: ColumnPath[T, T] = tabular.cols
+
+  private lazy val insertStatement = {
+    val placeholders = SqlRawPart(tabular.columns.map(_.id.placeholder.s).mkString(","))
+    sql"INSERT INTO ${tabular.tableName} (${tabular.columns}) VALUES ($placeholders)"
+  }
 
   override def insert(value: T)(using ConnectionProvider): Int = {
     insertStatement.one(value).update.run()
@@ -93,13 +105,21 @@ abstract class KeyedCrudBase[K, T](using keyDataType: DataType[K]) extends CrdBa
 
   override type Key = K
 
+  final type KeyColumnPath = ColumnPath[T, K]
+
   /** The column of the key */
-  val keyColumn: SqlIdentifier
+  lazy val keyColumn: SqlIdentifying = key.buildIdentifier
 
-  override def keyOf(value: T): K
+  def keyOf(value: T): K = cachedKeyGetter(value)
 
-  private lazy val updateStatement =
-    sql"UPDATE ${tabular.tableName} SET ${tabular.columns.namedPlaceholders} WHERE ${keyColumn} = ?"
+  def key: KeyColumnPath
+
+  private lazy val cachedKeyGetter: T => K = key.buildGetter
+
+  private lazy val updateStatement = {
+    val namedPlaceholders = SqlRawPart(tabular.columns.map(_.id.namedPlaceholder.s).mkString(","))
+    sql"UPDATE ${tabular.tableName} SET $namedPlaceholders WHERE ${keyColumn} = ?"
+  }
 
   override def update(value: T)(using ConnectionProvider): Int = {
     val key = keyOf(value)

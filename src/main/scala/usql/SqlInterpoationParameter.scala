@@ -1,4 +1,7 @@
 package usql
+
+import usql.dao.{Alias, ColumnPath, Crd, CrdBase, SqlColumn}
+
 import scala.language.implicitConversions
 
 /** Parameters available in sql""-Interpolation. */
@@ -39,8 +42,10 @@ object SqlInterpolationParameter {
   }
 
   /** Multiple identifiers. */
-  case class IdentifiersParameter(i: SqlIdentifiers) extends SqlInterpolationParameter {
-    override def replacement: String = i.serialize
+  case class IdentifiersParameter(i: Seq[SqlIdentifier]) extends SqlInterpolationParameter {
+    override def replacement: String = {
+      i.iterator.map(_.serialize).mkString(",")
+    }
   }
 
   /** Some unchecked raw block. */
@@ -62,10 +67,17 @@ object SqlInterpolationParameter {
     new SqlParameter(value, dataType)
   }
 
-  implicit def toIdentifierParameter(i: SqlIdentifier): IdentifierParameter    = IdentifierParameter(i)
-  implicit def toIdentifiersParameter(i: SqlIdentifiers): IdentifiersParameter = IdentifiersParameter(i)
-  implicit def rawBlockParameter(rawPart: SqlRawPart): RawBlockParameter       = RawBlockParameter(rawPart.s)
-  implicit def innerSql(sql: Sql): InnerSql                                    = InnerSql(sql)
+  implicit def toIdentifierParameter(i: SqlIdentifying): IdentifierParameter        = IdentifierParameter(i.buildIdentifier)
+  implicit def toIdentifiersParameter(i: Seq[SqlIdentifying]): IdentifiersParameter = IdentifiersParameter(
+    i.map(_.buildIdentifier)
+  )
+  implicit def columnsParameter(c: Seq[SqlColumn[?]]): IdentifiersParameter         = IdentifiersParameter(c.map(_.id))
+  implicit def rawBlockParameter(rawPart: SqlRawPart): RawBlockParameter            = RawBlockParameter(rawPart.s)
+  implicit def innerSql(sql: Sql): InnerSql                                         = InnerSql(sql)
+  implicit def alias(alias: Alias[?]): RawBlockParameter                            = RawBlockParameter(
+    s"${alias.tabular.tableName} ${alias.aliasName}"
+  )
+  implicit def crd(crd: CrdBase[?]): RawBlockParameter                              = RawBlockParameter(s"${crd.tabular.tableName}")
 }
 
 /** Something which can be added to sql""-interpolation without further checking. */

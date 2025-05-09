@@ -6,7 +6,7 @@ val versionTag = sys.env
   .filter(_.startsWith("v"))
   .map(_.stripPrefix("v"))
 
-val snapshotVersion = "0.2-SNAPSHOT"
+val snapshotVersion = "0.3-SNAPSHOT"
 val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / scalacOptions ++= Seq("-feature")
@@ -34,10 +34,12 @@ usePgpKeyHex("77D0E9E04837F8CBBCD56429897A43978251C225")
 
 ThisBuild / version      := artefactVersion
 ThisBuild / organization := "net.reactivecore"
-ThisBuild / scalaVersion := "3.3.3"
+ThisBuild / scalaVersion := "3.7.0"
 ThisBuild / Test / fork  := true
+ThisBuild / scalacOptions ++= Seq("-new-syntax", "-rewrite")
 
-val scalaTestVersion = "3.2.17"
+
+val scalaTestVersion = "3.2.19"
 
 lazy val root = (project in file("."))
   .settings(
