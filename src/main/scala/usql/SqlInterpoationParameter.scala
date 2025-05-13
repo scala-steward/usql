@@ -77,10 +77,25 @@ object SqlInterpolationParameter {
   implicit def alias(alias: Alias[?]): RawBlockParameter                            = RawBlockParameter(
     s"${alias.tabular.tableName} ${alias.aliasName}"
   )
-  implicit def crd(crd: CrdBase[?]): RawBlockParameter                              = RawBlockParameter(s"${crd.tabular.tableName}")
+
+  implicit def sqlParameters[T](sqlParameters: SqlParameters[T])(using dataType: DataType[T]): InnerSql = {
+    val builder = Seq.newBuilder[(String, SqlInterpolationParameter)]
+    sqlParameters.values.headOption.foreach { first =>
+      builder += (("", SqlParameter(first)))
+      sqlParameters.values.tail.foreach { next =>
+        builder += ((",", SqlParameter(next)))
+      }
+    }
+    InnerSql(Sql(builder.result()))
+  }
+
+  implicit def crd(crd: CrdBase[?]): RawBlockParameter = RawBlockParameter(s"${crd.tabular.tableName}")
 }
 
 /** Something which can be added to sql""-interpolation without further checking. */
 case class SqlRawPart(s: String) {
   override def toString: String = s
 }
+
+/** Marker for a sequence of elements like in SQL IN Clause, will be encoded as `?,...,?` and filled with values */
+case class SqlParameters[T](values: Seq[T])
