@@ -1,8 +1,9 @@
 package usql.dao
 
-import usql.SqlIdentifier
+import usql.{SqlColumnId, SqlTableId}
 import usql.profiles.BasicProfile.*
 import usql.util.TestBaseWithH2
+
 import scala.language.implicitConversions
 
 class KeyedCrudBaseTest extends TestBaseWithH2 {
@@ -32,12 +33,12 @@ class KeyedCrudBaseTest extends TestBaseWithH2 {
   val sample3 = User(3, None, None)
 
   it should "properly escape" in {
-    UserCrd.tabular.tableName shouldBe SqlIdentifier.fromString("user")
+    UserCrd.tabular.table shouldBe SqlTableId.fromString("user")
     UserCrd.tabular.columns.map(_.id) shouldBe Seq(
       "id",
       "name",
       "age"
-    ).map(SqlIdentifier.fromString)
+    ).map(SqlColumnId.fromString)
   }
 
   it should "provide basic crd features" in {

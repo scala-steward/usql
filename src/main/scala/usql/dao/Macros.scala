@@ -1,6 +1,6 @@
 package usql.dao
 
-import usql.{DataType, RowEncoder, RowDecoder, SqlIdentifier}
+import usql.{DataType, RowDecoder, RowEncoder, SqlColumnId, SqlTableId}
 
 import scala.annotation.Annotation
 import scala.compiletime.{erasedValue, summonInline}
@@ -51,17 +51,18 @@ object Macros {
   inline def buildTabular[T <: Product](using nm: NameMapping, mirror: Mirror.ProductOf[T]): SqlTabular[T] = {
     val fielded = buildFielded[T]
 
-    val tableName: SqlIdentifier = tableNameAnnotation[T]
+    val tableName: SqlTableId = tableNameAnnotation[T]
       .map { tn =>
-        SqlIdentifier.fromString(tn.name)
+        SqlTableId.fromString(tn.name)
       }
       .getOrElse {
-        nm.caseClassToTableName(typeName[T])
+        nm.caseClassToTableId(typeName[T])
       }
 
     SqlTabular.SimpleTabular(
-      tableName = tableName,
-      fielded = fielded
+      table = tableName,
+      fielded = fielded,
+      isOptional = false
     )
   }
 
@@ -141,7 +142,7 @@ object Macros {
       labels.zip(annotations).zip(typeInfos.infos).map {
         case ((label, annotations), typeInfo: TypeInfo.Scalar[?]) =>
           val nameAnnotation = getMaxOneAnnotation[ColumnName](annotations)
-          val id             = nameAnnotation.map(a => SqlIdentifier.fromString(a.name)).getOrElse(nm.columnToSql(label))
+          val id             = nameAnnotation.map(a => SqlColumnId.fromString(a.name)).getOrElse(nm.columnToSql(label))
           val column         = SqlColumn(id, typeInfo.dataType)
           Field.Column(label, column)
         case ((label, annotations), c: TypeInfo.Columnar[?])      =>
@@ -149,7 +150,7 @@ object Macros {
           val columnGroup    = getMaxOneAnnotation[ColumnGroup](annotations)
           val mapping        = columnGroup.map(_.mapping).getOrElse(ColumnGroupMapping.Pattern())
           val columnBaseName =
-            nameAnnotation.map(a => SqlIdentifier.fromString(a.name)).getOrElse(nm.columnToSql(label))
+            nameAnnotation.map(a => SqlColumnId.fromString(a.name)).getOrElse(nm.columnToSql(label))
           Field.Group(label, mapping, columnBaseName, c.columnar.asInstanceOf[SqlFielded[?]])
       }
     SqlFielded.SimpleSqlFielded(

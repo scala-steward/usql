@@ -71,7 +71,7 @@ class SimpleJoinTest extends TestBaseWithH2 {
       sql"""SELECT ${person.columns}, ${level.columns}
             FROM ${person} INNER JOIN ${level}
             WHERE p.level_id = l.id
-            """.query.all[(Person, Level)]()
+            """.queryAll[(Person, Level)]()
 
     joined should contain theSameElementsAs Seq(
       (person2, level1),
@@ -83,7 +83,7 @@ class SimpleJoinTest extends TestBaseWithH2 {
     val joined =
       sql"""SELECT ${person.columns}, ${level.columns}
                 FROM ${person} LEFT JOIN ${level} ON p.level_id = l.id
-                """.query.all[(Person, Option[Level])]()
+                """.queryAll[(Person, Option[Level])]()
 
     joined should contain theSameElementsAs Seq(
       (person1, None),
@@ -94,11 +94,11 @@ class SimpleJoinTest extends TestBaseWithH2 {
   }
 
   it should "provide access to aliased column names" in new Env {
-    person.col.name.buildIdentifier.toString shouldBe "p.name"
+    person.col.name.columnIds.map(_.toString) shouldBe Seq("p.name")
     val selected =
       sql"""
           SELECT ${person.col.name} FROM ${person}
-         """.query.all[String]()
+         """.queryAll[String]()
     selected should contain theSameElementsAs Person.findAll().map(_.name)
   }
 }

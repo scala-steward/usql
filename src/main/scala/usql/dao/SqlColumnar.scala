@@ -1,6 +1,6 @@
 package usql.dao
 
-import usql.{RowEncoder, RowDecoder}
+import usql.{Optionalize, RowDecoder, RowEncoder}
 
 import scala.deriving.Mirror
 
@@ -22,4 +22,10 @@ trait SqlColumnar[T] {
 
   /** Filler for a full row. */
   def rowEncoder: RowEncoder[T]
+
+  /** Returns true if T is an optional type */
+  def isOptional: Boolean
+
+  /** Returns the optional variant. */
+  def optionalize: SqlColumnar[Optionalize[T]]
 }
