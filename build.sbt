@@ -50,7 +50,7 @@ lazy val root = (project in file("."))
       "org.scalatest" %% "scalatest"          % scalaTestVersion % Test,
       "org.scalatest" %% "scalatest-flatspec" % scalaTestVersion % Test,
       "com.h2database" % "h2"                 % "2.3.232"        % Test,
-      "org.postgresql" % "postgresql"         % "42.7.7"         % Test
+      "org.postgresql" % "postgresql"         % "42.7.8"         % Test
     ),
     publishSettings
   )
