@@ -12,6 +12,7 @@ Version Matrix
 
 | Version | JVM Version | Scala Version |
 |---------|-------------|---------------|
+| 0.4.x   | 21+         | 3.7.x+        |
 | 0.3.x   | 21+         | 3.7.x+        |
 | 0.2.x   | 17+         | 3.3.x+        |           
 
@@ -31,6 +32,7 @@ Replace `CURRENT_VERSION` with current version (e.g. `0.2.0`)
 - Extensible
 - SQL Interpolation
 - Simple CRUD (Create, Replace, Update, Modify) / DAO-Object generation for your case classes.
+- Simple Query Builder
 
 ## Non-Features
 
@@ -196,18 +198,29 @@ val allAgain: Vector[(Int, String)] =
 println(s"allAgain=${allAgain}")
 ```
 
+## Simple Query Builder
+
+```scala 3
+println(Person.query.filter(_.id === 6).map(_.name).one()) // Some("Franziska")
+```
+
+The query builder also supports simple inner and left joins. They still need more testing though.
+
 # Core Types
 
 - `DataType` a type class which derives how to fetch a Type `T` from a `ResultSet` and how to store it in a `PreparedStatement`
 - `RowDecoder` type class for fetching tuples / values from `ResultSet`
 - `RowEncoder` type class for filling tuples / values into a `PreparedStatement`
-- `SqlIdentifier` an SQL identifier, quoted if necessary.
+- `SqlColumnId` an SQL Column incluing Alias
+- `TableId` an Table identifier
 - `RawSql` Raw SQL Queries
 - `Sql` interpolated SQL Queries
 
 ## DAO Core Types
 
-- `SqlColumnar` describes the columns and codec for a case class `T`, macro generated
-- `SqlTabular` like `SqlColumnar`, but also contains a table name
+- `SqlColumnar` describes something which has columns.
+- `SqlFielded` describes a field structure for a case class, is a `SqlColumnar[T]` 
+- `SqlTabular` like `SqlFielded`, but also contains a table name
 - `Crd` basic Create-Read-Delete operations
 - `KeyedCrud` Crd for single-keyed types
+- `QueryBuilder` simple query builder

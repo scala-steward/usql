@@ -1,6 +1,9 @@
 package usql.dao
 
-import usql.{SqlIdentifier, SqlIdentifying}
+import usql.{Optionalize, SqlColumnIdentifying, SqlInterpolationParameter, UnOption}
+
+import scala.annotation.implicitNotFound
+import scala.language.implicitConversions
 
 /**
  * Helper for going through the field path of SqlFielded.
@@ -12,100 +15,111 @@ import usql.{SqlIdentifier, SqlIdentifying}
  * @tparam T
  *   end path
  */
-case class ColumnPath[R, T](root: SqlFielded[R], fields: List[String] = Nil, alias: Option[String] = None)
-    extends Selectable
-    with SqlIdentifying {
+trait ColumnPath[R, T] extends Selectable with SqlColumnIdentifying with Rep[T] {
 
-  final type Child[X] = ColumnPath[R, X]
-
-  type Fields = NamedTuple.Map[NamedTuple.From[T], Child]
-
-  def selectDynamic(name: String): ColumnPath[R, ?] = {
-    ColumnPath(root, name :: fields, alias)
+  /**
+   * If we are coming from an optional value, we go into an optional value.
+   *
+   * If not, we take the child value.
+   */
+  final type Child[X] = T match {
+    case Option[r] => ColumnPath[R, Optionalize[X]]
+    case _         => ColumnPath[R, X]
   }
 
-  private lazy val walker: ColumnPath.Walker[R, T] = {
-    val reversed = fields.reverse
-    reversed
-      .foldLeft(
-        ColumnPath.FieldedWalker[R, R](
-          root,
-          mapping = identity,
-          getter = identity
-        ): ColumnPath.Walker[?, ?]
-      )(_.select(_))
-      .asInstanceOf[ColumnPath.Walker[R, T]]
+  /** Names the Fields of this ColumnPath. */
+  type Fields = NamedTuple.Map[NamedTuple.From[UnOption[T]], Child]
+
+  /** Select a dynamic field. */
+  def selectDynamic(name: String): ColumnPath[R, ?]
+
+  /** Build a getter for this field from the base type. */
+  def buildGetter: R => T
+
+  /** The structure of T */
+  def structure: SqlFielded[T] | SqlColumn[T]
+
+  override final def toInterpolationParameter: SqlInterpolationParameter = columnIds
+
+  override def toString: String = {
+    columnIds match {
+      case Seq(one) => one.toString
+      case multiple => multiple.mkString("[", ",", "[")
+    }
   }
 
-  override def buildIdentifier: SqlIdentifier = {
-    walker.id.copy(alias = alias)
-  }
+  /** Prepend a path. */
+  private[usql] def prepend[R2](columnPath: ColumnPath[R2, R]): ColumnPath[R2, T]
 
-  def buildGetter: R => T = {
-    walker.get
-  }
+  /** Returns true if this is an empty path */
+  def isEmpty: Boolean = false
 }
 
 object ColumnPath {
 
-  def make[T](using f: SqlFielded[T]): ColumnPath[T, T] = ColumnPath(f)
+  def make[T](using f: SqlFielded[T]): ColumnPath[T, T] = ColumnPathStart(f)
 
-  trait Walker[R, T] {
-    def select(field: String): Walker[R, ?]
-    def id: SqlIdentifier
-    def get(root: R): T
+  def makeOpt[T](using f: SqlFielded[T]): ColumnPath[Option[T], Option[T]] = {
+    ColumnPathStart(SqlFielded.OptionalSqlFielded(f))
   }
 
-  case class FieldedWalker[R, T](
-      model: SqlFielded[T],
-      mapping: SqlIdentifier => SqlIdentifier = identity,
-      getter: R => T = identity
-  ) extends Walker[R, T] {
-    override def select(field: String): Walker[R, ?] = {
-      model.fields.view.zipWithIndex
-        .collectFirst {
-          case (f, idx) if f.fieldName == field =>
-            selectField(idx, f)
-        }
-        .getOrElse {
-          throw new IllegalStateException(s"Can not fiend field nane ${field}")
-        }
+  /** Concat two Column Paths. */
+  def concat[A, B, C](first: ColumnPath[A, B], second: ColumnPath[B, C]): ColumnPath[A, C] = {
+    second.prepend(first)
+  }
+
+  implicit def fromTuple[T](in: T)(using b: BuildFromTuple[T]): ColumnPath[b.Root, b.CombinedType] =
+    b.build(in)
+
+  private def emptyPath[R]: TupleColumnPath[R, EmptyTuple] = TupleColumnPath.Empty[R]()
+
+  private def prependPath[R, H, T <: Tuple](
+      head: ColumnPath[R, H],
+      tail: TupleColumnPath[R, T]
+  ): TupleColumnPath[R, H *: T] = {
+    TupleColumnPath.Rec(head, tail)
+  }
+
+  /** Helper for building ColumnPath from Tuple */
+  @implicitNotFound("Could not find BuildFromTuple")
+  trait BuildFromTuple[T] {
+    type CombinedType <: Tuple
+
+    type Root
+
+    def build(from: T): TupleColumnPath[Root, CombinedType]
+  }
+
+  object BuildFromTuple {
+    type Aux[T, C <: Tuple, R] = BuildFromTuple[T] {
+      type CombinedType = C
+
+      type Root = R
     }
 
-    private def selectField[X](idx: Int, f: Field[X]): Walker[R, X] = {
-      val subGetter: T => X  = (value) => {
-        val splitted = model.split(value)
-        splitted.apply(idx).asInstanceOf[X]
+    given buildFromEmptyTuple[R]: BuildFromTuple.Aux[EmptyTuple, EmptyTuple, R] =
+      new BuildFromTuple[EmptyTuple] {
+        override type CombinedType = EmptyTuple
+
+        override type Root = R
+
+        override def build(from: EmptyTuple): TupleColumnPath[R, EmptyTuple] = emptyPath[R]
       }
-      val newFetcher: R => X = getter.andThen(subGetter)
-      f match {
-        case f: Field.Column[X] => ColumnWalker[R, X](f, mapping, newFetcher)
-        case g: Field.Group[X]  =>
-          val subMapping: SqlIdentifier => SqlIdentifier = in => mapping(g.mapping.map(g.columnBaseName, in))
-          FieldedWalker(g.fielded, subMapping, newFetcher)
-      }
-    }
 
-    override def id: SqlIdentifier = {
-      throw new IllegalStateException("Not at a final field")
-    }
+    given buildFromIteration[H, T <: Tuple, R, TC <: Tuple](
+        using tailBuild: BuildFromTuple.Aux[T, TC, R]
+    ): BuildFromTuple.Aux[
+      (ColumnPath[R, H] *: T),
+      H *: TC,
+      R
+    ] = new BuildFromTuple[ColumnPath[R, H] *: T] {
+      override type CombinedType = H *: TC
 
-    override def get(root: R): T = {
-      getter(root)
+      override type Root = R
+
+      override def build(from: (ColumnPath[R, H] *: T)): TupleColumnPath[R, CombinedType] =
+        prependPath(from.head, tailBuild.build(from.tail))
     }
   }
 
-  case class ColumnWalker[R, T](
-      column: Field.Column[T],
-      mapping: SqlIdentifier => SqlIdentifier = identity,
-      getter: R => T
-  ) extends Walker[R, T] {
-    override def select(field: String): Walker[R, ?] = {
-      throw new IllegalStateException(s"Can walk further column")
-    }
-
-    override def id: SqlIdentifier = mapping(column.column.id)
-
-    override def get(root: R): T = getter(root)
-  }
 }

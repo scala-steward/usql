@@ -29,16 +29,16 @@ sql"INSERT INTO person (id, name) VALUES (${2}, ${"Bob"})"
 
 // Simple Queries
 
-val all: Vector[(Int, String)] = sql"SELECT id, name FROM person".query.all[(Int, String)]()
+val all: Vector[(Int, String)] = sql"SELECT id, name FROM person".queryAll[(Int, String)]()
 println(s"All=${all}")
 
 // Constant Parts of the query
 
-val one: Option[(Int, String)] = sql"SELECT id, name FROM #${"person"} WHERE id = ${1}".query.one[(Int, String)]()
+val one: Option[(Int, String)] = sql"SELECT id, name FROM #${"person"} WHERE id = ${1}".queryOne[(Int, String)]()
 println(s"One=${one}")
 
 val ids   = Seq(1, 2, 3)
-val names = sql"SELECT name FROM person WHERE id IN (${SqlParameters(ids)})".query.all[String]()
+val names = sql"SELECT name FROM person WHERE id IN (${SqlParameters(ids)})".queryAll[String]()
 println(s"Names=${names}")
 
 // Inserts
@@ -53,11 +53,11 @@ sql"INSERT INTO person (id, name) VALUES(?, ?)"
   )
   .run()
 
-sql"SELECT COUNT(*) FROM person".query.one[Int]().get
+sql"SELECT COUNT(*) FROM person".queryOne[Int]().get
 
 // Reusable Parts
 val select      = sql"SELECT id, name FROM person"
-val selectAlice = (select + sql" WHERE id = ${1}").query.one[(Int, String)]()
+val selectAlice = (select + sql" WHERE id = ${1}").queryOne[(Int, String)]()
 println(s"Alice: ${selectAlice}")
 
 // Transactions
@@ -93,6 +93,10 @@ println(Person.findByKey(6)) // Person(6, Franziska)
 // Simple Queries (using Scala 3.7.0+ Named Tuples)
 
 val allAgain: Vector[(Int, String)] =
-  sql"SELECT ${Person.cols.id}, ${Person.cols.name} FROM ${Person}".query.all[(Int, String)]()
+  sql"SELECT ${Person.cols.id}, ${Person.cols.name} FROM ${Person}".queryAll[(Int, String)]()
 
 println(s"allAgain=${allAgain}")
+
+// Simple QueryBuilder
+
+println(Person.query.filter(_.id === 6).map(_.name).one()) // Some("Franziska")

@@ -66,9 +66,12 @@ abstract class CrdBase[T] extends Crd[T] {
   /** Gives access to the columns */
   def cols: ColumnPath[T, T] = tabular.cols
 
+  /** Start using within query builder. */
+  def query: QueryBuilderForTable[T] = QueryBuilder.make(using tabular)
+
   private lazy val insertStatement = {
     val placeholders = SqlRawPart(tabular.columns.map(_.id.placeholder.s).mkString(","))
-    sql"INSERT INTO ${tabular.tableName} (${tabular.columns}) VALUES ($placeholders)"
+    sql"INSERT INTO ${tabular.table} (${tabular.columns}) VALUES ($placeholders)"
   }
 
   override def insert(value: T)(using ConnectionProvider): Int = {
@@ -80,20 +83,20 @@ abstract class CrdBase[T] extends Crd[T] {
   }
 
   /** Select All Statement, may be reused. */
-  protected lazy val selectAll = sql"SELECT ${tabular.columns} FROM ${tabular.tableName}"
+  protected lazy val selectAll = sql"SELECT ${tabular.columns} FROM ${tabular.table}"
 
   override def findAll()(using ConnectionProvider): Seq[T] = {
     selectAll.query.all()
   }
 
-  private lazy val countAllStatement = sql"SELECT COUNT(*) FROM ${tabular.tableName}"
+  private lazy val countAllStatement = sql"SELECT COUNT(*) FROM ${tabular.table}"
 
   override def countAll()(using ConnectionProvider): Int = {
     import usql.profiles.BasicProfile.intType
-    countAllStatement.query.one[Int]().getOrElse(0)
+    countAllStatement.query[Int].one().getOrElse(0)
   }
 
-  private lazy val deleteAllStatement = sql"DELETE FROM ${tabular.tableName}"
+  private lazy val deleteAllStatement = sql"DELETE FROM ${tabular.table}"
 
   override def deleteAll()(using ConnectionProvider): Int = {
     deleteAllStatement.update.run()
@@ -108,7 +111,7 @@ abstract class KeyedCrudBase[K, T](using keyDataType: DataType[K]) extends CrdBa
   final type KeyColumnPath = ColumnPath[T, K]
 
   /** The column of the key */
-  lazy val keyColumn: SqlIdentifying = key.buildIdentifier
+  lazy val keyColumn: SqlColumnIdentifying = key
 
   def keyOf(value: T): K = cachedKeyGetter(value)
 
@@ -118,7 +121,7 @@ abstract class KeyedCrudBase[K, T](using keyDataType: DataType[K]) extends CrdBa
 
   private lazy val updateStatement = {
     val namedPlaceholders = SqlRawPart(tabular.columns.map(_.id.namedPlaceholder.s).mkString(","))
-    sql"UPDATE ${tabular.tableName} SET $namedPlaceholders WHERE ${keyColumn} = ?"
+    sql"UPDATE ${tabular.table} SET $namedPlaceholders WHERE ${keyColumn} = ?"
   }
 
   override def update(value: T)(using ConnectionProvider): Int = {
@@ -134,7 +137,7 @@ abstract class KeyedCrudBase[K, T](using keyDataType: DataType[K]) extends CrdBa
   }
 
   private lazy val deleteByKeyStatement =
-    sql"DELETE FROM ${tabular.tableName} WHERE ${keyColumn} = ?"
+    sql"DELETE FROM ${tabular.table} WHERE ${keyColumn} = ?"
 
   override def deleteByKey(key: K)(using ConnectionProvider): Int = {
     deleteByKeyStatement.one(key).update.run()
