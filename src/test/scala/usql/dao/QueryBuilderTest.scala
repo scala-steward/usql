@@ -81,6 +81,7 @@ class QueryBuilderTest extends TestBaseWithH2 {
     val withoutAge = withoutAgeQuery.all()
 
     withoutAge should contain theSameElementsAs Seq(2 -> "Bob", 3 -> "Charly")
+    withoutAgeQuery.count() shouldBe 2
   }
 
   it should "work with a single join" in new EnvWithSamples {
@@ -92,6 +93,8 @@ class QueryBuilderTest extends TestBaseWithH2 {
       alice -> write.id,
       bob   -> read.id
     )
+
+    foo.count() shouldBe 3
   }
 
   it should "with simple joins" in new EnvWithSamples {
@@ -126,6 +129,8 @@ class QueryBuilderTest extends TestBaseWithH2 {
       3 -> "Charly"
     )
 
+    persons.count() shouldBe 3
+
     val permissions = Permission.query
       .join(QueryBuilder.make[PersonPermission])(_.id === _.permissionId)
       .map(x => (x._1.name, x._2.personId))
@@ -136,6 +141,7 @@ class QueryBuilderTest extends TestBaseWithH2 {
 
     val expected = Seq(("Alice", "Read"), ("Alice", "Write"), ("Bob", "Read"))
     personAndPermission.all() should contain theSameElementsAs expected
+    personAndPermission.count() shouldBe 3
   }
 
   it should "work with conflicting ids" in new EnvWithSamples {
@@ -156,6 +162,10 @@ class QueryBuilderTest extends TestBaseWithH2 {
     all should contain theSameElementsAs Seq(bob, charly)
     Permission.findAll() shouldBe empty
     PersonPermission.findAll() shouldBe empty
+
+    Person.query.count() shouldBe 2
+    Permission.query.count() shouldBe 0
+    PersonPermission.query.count() shouldBe 0
   }
 
   it should "update in simple cases" in new EnvWithSamples {
