@@ -42,6 +42,9 @@ trait QueryBuilder[T] extends Query[T] {
     val aliasName = s"X-${UUID.randomUUID()}"
     FromItem.Aliased(FromItem.SubSelect(this), aliasName)
   }
+
+  /** Count elements. */
+  def count()(using cp: ConnectionProvider): Int
 }
 
 /** A Query Builder which somehow still presents a projected table. Supports update call. */

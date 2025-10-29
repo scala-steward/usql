@@ -1,6 +1,7 @@
 package usql.dao
 
 import usql.{ConnectionProvider, Sql, SqlInterpolationParameter, sql}
+import usql.profiles.BasicProfile.intType
 
 import java.util.UUID
 
@@ -66,12 +67,13 @@ private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[
     extends QueryBuilderBase[P]
     with QueryBuilderProjected[T, P] {
   override def toPreSql: Sql = {
-    val maybeFilterSql: SqlInterpolationParameter = if filters.isEmpty then {
-      SqlInterpolationParameter.Empty
-    } else {
-      sql" WHERE ${filters.reduce(_ && _).toInterpolationParameter}"
-    }
     sql"SELECT ${projectionString} FROM ${from.toPreSql} ${maybeFilterSql}"
+  }
+
+  private val maybeFilterSql: SqlInterpolationParameter = if filters.isEmpty then {
+    SqlInterpolationParameter.Empty
+  } else {
+    sql" WHERE ${filters.reduce(_ && _).toInterpolationParameter}"
   }
 
   protected def basePath: ColumnPath[P, P] = {
@@ -96,6 +98,11 @@ private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[
 
   override def map[R0](f: ColumnPath[P, P] => ColumnPath[P, R0]): QueryBuilder[R0] = {
     project(f(basePath))
+  }
+
+  override def count()(using cp: ConnectionProvider): Int = {
+    val sql = sql"SELECT COUNT (*) FROM ${from.toPreSql} ${maybeFilterSql}".simplifyAliases
+    sql.queryOne[Int]().getOrElse(0)
   }
 }
 
@@ -137,6 +144,10 @@ private[usql] case class SimpleTableSelect[T](
 
   override def delete()(using cp: ConnectionProvider): Int = {
     sql"DELETE FROM ${tabular.table} ${maybeFilterSql}".update.run()
+  }
+
+  override def count()(using cp: ConnectionProvider): Int = {
+    sql"SELECT COUNT(*) FROM ${tabular.table} ${maybeFilterSql}".queryOne[Int]().getOrElse(0)
   }
 
   def appliedFilters: Option[Rep[Boolean]] = {
@@ -208,6 +219,10 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
         filters = in.filters :+ mappedFilter
       )
     )
+  }
+
+  override def count()(using cp: ConnectionProvider): Int = {
+    in.count()
   }
 
   override protected def basePath: ColumnPath[P, P] = ColumnPath.make[P](using fielded)
