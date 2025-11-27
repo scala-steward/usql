@@ -39,7 +39,7 @@ object Macros {
     given forTuple[H, T <: Tuple](
         using typeInfo: TypeInfo[H],
         tailInfos: TypeInfos[T]
-    ): TypeInfos[H *: T] = TypeInfos(
+    ): TypeInfos[H *: T]               = TypeInfos(
       typeInfo :: tailInfos.infos,
       builder = values => {
         values.head.asInstanceOf[H] *: tailInfos.builder(values.tail)
