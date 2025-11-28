@@ -12,7 +12,7 @@ sealed trait TupleColumnPath[R, T <: Tuple] extends ColumnPath[R, T] {
 
 object TupleColumnPath {
   case class Empty[R]() extends TupleColumnPath[R, EmptyTuple] {
-    override def selectDynamic(name: String): ColumnPath[R, _] = {
+    override def selectDynamic(name: String): ColumnPath[R, ?] = {
       throw new IllegalArgumentException("No fields in empty path")
     }
 
@@ -35,7 +35,7 @@ object TupleColumnPath {
 
   case class Rec[R, H, T <: Tuple](head: ColumnPath[R, H], tail: TupleColumnPath[R, T])
       extends TupleColumnPath[R, H *: T] {
-    override def selectDynamic(name: String): ColumnPath[R, _] = {
+    override def selectDynamic(name: String): ColumnPath[R, ?] = {
       val index = name.stripPrefix("_").toIntOption.getOrElse {
         throw new IllegalStateException(s"Unknown field: ${name}")
       } - 1
@@ -67,12 +67,12 @@ object TupleColumnPath {
 
     private def headField(tupleIdx: Int): Field[T] = {
       head.structure match {
-        case c: SqlColumn[T]  =>
+        case c: SqlColumn[T] @unchecked  =>
           Field.Column(
             s"_${tupleIdx}",
             c
           )
-        case f: SqlFielded[T] =>
+        case f: SqlFielded[T] @unchecked =>
           Field.Group(
             s"_${tupleIdx}",
             ColumnGroupMapping.Anonymous,

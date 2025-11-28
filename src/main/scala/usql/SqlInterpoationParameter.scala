@@ -48,7 +48,7 @@ object SqlInterpolationParameter {
       s"SqlParameter(${value} of type ${dataType.jdbcType.getName})"
     }
 
-    override def parameters: Seq[SqlParameter[_]] = List(this)
+    override def parameters: Seq[SqlParameter[?]] = List(this)
   }
 
   object SqlParameter {
@@ -91,7 +91,7 @@ object SqlInterpolationParameter {
       )
     }
 
-    override def parameters: Seq[SqlParameter[_]] = underlying.flatMap(_.parameters)
+    override def parameters: Seq[SqlParameter[?]] = underlying.flatMap(_.parameters)
   }
 
   /** Some unchecked raw block. */
@@ -110,7 +110,7 @@ object SqlInterpolationParameter {
 
     override def mapAliases(map: Map[String, String]): SqlInterpolationParameter = sql.mapAliases(map)
 
-    override def parameters: Seq[SqlParameter[_]] = sql.parameters
+    override def parameters: Seq[SqlParameter[?]] = sql.parameters
   }
 
   case class TableIdParameter(tableId: SqlTableId) extends SqlInterpolationParameter {

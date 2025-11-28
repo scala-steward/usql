@@ -6,7 +6,7 @@ private[usql] abstract class ColumnPathAtFielded[R, T](
     fielded: SqlFielded[T],
     parentMapping: SqlColumnId => SqlColumnId
 ) extends ColumnPath[R, T] {
-  override def selectDynamic(name: String): ColumnPath[R, _] = {
+  override def selectDynamic(name: String): ColumnPath[R, ?] = {
     val (field, fieldIdx) = fielded.fields.view.zipWithIndex.find(_._1.fieldName == name).getOrElse {
       throw new IllegalStateException(
         s"Unknown field ${name}, expected: one of ${fielded.fields.map(_.fieldName).mkString("[", ",", "]")}"
@@ -95,7 +95,7 @@ private[usql] case class ColumnPathSelectColumn[R, P, T](
     parent: ColumnPath[R, P],
     subGetter: P => T
 ) extends ColumnPath[R, T] {
-  override def selectDynamic(name: String): ColumnPath[R, _] = {
+  override def selectDynamic(name: String): ColumnPath[R, ?] = {
     throw new IllegalStateException(s"Can walk further column")
   }
 
@@ -123,7 +123,7 @@ private[usql] case class ColumnPathOptionalize[R, T](underlying: ColumnPath[R, T
     extends ColumnPath[R, Optionalize[T]] {
   lazy val underlyingIsOptional = underlying.structure.isOptional
 
-  override def selectDynamic(name: String): ColumnPath[R, _] = {
+  override def selectDynamic(name: String): ColumnPath[R, ?] = {
     ColumnPathOptionalize(
       underlying.selectDynamic(name)
     )
@@ -156,7 +156,7 @@ private[usql] case class ColumnPathOptionalize[R, T](underlying: ColumnPath[R, T
 
 private[usql] object ColumnPathOptionalize {
   def make[R, T](underlying: ColumnPath[R, T]): ColumnPathOptionalize[R, T] = underlying match {
-    case c: ColumnPathOptionalize[R, ?] => c.asInstanceOf[ColumnPathOptionalize[R, T]]
-    case otherwise                      => ColumnPathOptionalize(otherwise)
+    case c: ColumnPathOptionalize[R, ?] @unchecked => c.asInstanceOf[ColumnPathOptionalize[R, T]]
+    case otherwise                                 => ColumnPathOptionalize(otherwise)
   }
 }
