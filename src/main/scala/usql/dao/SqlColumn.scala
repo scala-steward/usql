@@ -7,7 +7,7 @@ case class SqlColumn[T](
     id: SqlColumnId,
     dataType: DataType[T]
 ) extends SqlColumnar[T] {
-  override def columns: Seq[SqlColumn[_]] = List(this)
+  override def columns: Seq[SqlColumn[?]] = List(this)
 
   override def rowDecoder: RowDecoder[T] = RowDecoder.forDataType(using dataType)
 
@@ -22,4 +22,9 @@ case class SqlColumn[T](
   override def optionalize: SqlColumn[Optionalize[T]] = copy(
     dataType = dataType.optionalize
   )
+}
+
+object SqlColumn {
+
+  def apply[T](name: String, dataType: DataType[T]): SqlColumn[T] = SqlColumn(SqlColumnId.fromString(name), dataType)
 }

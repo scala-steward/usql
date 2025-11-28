@@ -61,7 +61,7 @@ trait SqlFielded[T] extends SqlColumnar[T] {
       }
     }
 
-    override def toSqlParameter(value: T): Seq[SqlParameter[_]] = {
+    override def toSqlParameter(value: T): Seq[SqlParameter[?]] = {
       val builder     = Seq.newBuilder[SqlParameter[?]]
       val fieldValues = split(value)
       fieldValues.zip(fields).foreach { case (fieldValue, field) =>
@@ -141,7 +141,7 @@ object SqlFielded {
     Macros.buildFielded[T]
 
   case class MappedSqlFielded[T](underlying: SqlFielded[T], mapping: SqlColumnId => SqlColumnId) extends SqlFielded[T] {
-    override lazy val fields: Seq[Field[_]] = underlying.fields.map {
+    override lazy val fields: Seq[Field[?]] = underlying.fields.map {
       case c: Field.Column[?] =>
         c.copy(
           column = c.column.copy(
@@ -165,7 +165,7 @@ object SqlFielded {
 
     val needsOptionalization = underlying.fields.map(f => !f.isOptional)
 
-    override def fields: Seq[Field[_]] = underlying.fields.map {
+    override def fields: Seq[Field[?]] = underlying.fields.map {
       case g: Field.Group[?]  =>
         g.copy(
           fielded = OptionalSqlFielded(g.fielded)
@@ -210,7 +210,7 @@ object SqlFielded {
 
   /** An SqlFielded with only one instance. */
   case class PseudoFielded[T](c: SqlColumn[T]) extends SqlFielded[T] {
-    override def fields: Seq[Field[_]] = Seq(
+    override def fields: Seq[Field[?]] = Seq(
       Field.Column("", c)
     )
 
@@ -228,10 +228,10 @@ object SqlFielded {
   }
 
   case class ConcatFielded[L, R](left: SqlFielded[L], right: SqlFielded[R]) extends SqlFielded[(L, R)] {
-    override def fields: Seq[Field[_]] = {
+    override def fields: Seq[Field[?]] = {
       Seq(
-        Field.Group("_1", ColumnGroupMapping.Anonymous, "", left),
-        Field.Group("_2", ColumnGroupMapping.Anonymous, "", right)
+        Field.Group("_1", ColumnGroupMapping.Anonymous, SqlColumnId.fromString(""), left),
+        Field.Group("_2", ColumnGroupMapping.Anonymous, SqlColumnId.fromString(""), right)
       )
     }
 
@@ -249,7 +249,7 @@ object SqlFielded {
   }
 
   case class WithColumnsRenamed[T](base: SqlFielded[T], columnIds: Seq[SqlColumnId]) extends SqlFielded[T] {
-    override lazy val fields: Seq[Field[_]] = {
+    override lazy val fields: Seq[Field[?]] = {
       var remainingColumns = columnIds
       val result           = Seq.newBuilder[Field[?]]
       base.fields.foreach {

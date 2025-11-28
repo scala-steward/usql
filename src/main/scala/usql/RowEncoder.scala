@@ -28,7 +28,7 @@ trait RowEncoder[T] {
 
       override def serialize(value: U): Seq[Any] = me.serialize(f(value))
 
-      override def toSqlParameter(value: U): Seq[SqlParameter[_]] = me.toSqlParameter(f(value))
+      override def toSqlParameter(value: U): Seq[SqlParameter[?]] = me.toSqlParameter(f(value))
     }
   }
 
@@ -66,7 +66,7 @@ object RowEncoder {
       headEncoder.serialize(value.head) ++ tailEncoder.serialize(value.tail)
     }
 
-    override def toSqlParameter(value: H *: T): Seq[SqlParameter[_]] = {
+    override def toSqlParameter(value: H *: T): Seq[SqlParameter[?]] = {
       headEncoder.toSqlParameter(value.head) ++ tailEncoder.toSqlParameter(value.tail)
     }
   }
@@ -78,7 +78,7 @@ object RowEncoder {
 
     override def serialize(value: EmptyTuple): Seq[Any] = Nil
 
-    override def toSqlParameter(value: EmptyTuple): Seq[SqlParameter[_]] = Nil
+    override def toSqlParameter(value: EmptyTuple): Seq[SqlParameter[?]] = Nil
   }
 
   given forDataType[T](using dt: DataType[T]): RowEncoder[T] = new RowEncoder[T] {
@@ -88,7 +88,7 @@ object RowEncoder {
 
     override def serialize(value: T): Seq[Any] = Seq(value)
 
-    override def toSqlParameter(value: T): Seq[SqlParameter[_]] = {
+    override def toSqlParameter(value: T): Seq[SqlParameter[?]] = {
       List(SqlParameter(value))
     }
   }
