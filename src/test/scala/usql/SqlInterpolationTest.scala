@@ -85,7 +85,7 @@ class SqlInterpolationTest extends TestBase {
 
   it should "also work in another case" in {
     val inner    = sql"C = ${2}"
-    val foo      = sql"HELLO a = ${1} AND"
+    sql"HELLO a = ${1} AND"
     val combined = (sql"HELLO a = ${1} AND ${inner}")
     combined shouldBe Sql(
       Seq(

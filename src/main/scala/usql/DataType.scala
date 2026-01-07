@@ -1,6 +1,6 @@
 package usql
 
-import java.sql.{Connection, JDBCType, PreparedStatement, ResultSet}
+import java.sql.{JDBCType, PreparedStatement, ResultSet}
 
 /** Type class describing a type to use. */
 trait DataType[T] {
@@ -139,7 +139,7 @@ object DataType {
 
     override def serialize(value: Option[T]): String = {
       value match {
-        case None        => s"<none>"
+        case None        => "<none>"
         case Some(value) => underlying.serialize(value)
       }
     }

@@ -96,7 +96,7 @@ private[usql] case class ColumnPathSelectColumn[R, P, T](
     subGetter: P => T
 ) extends ColumnPath[R, T] {
   override def selectDynamic(name: String): ColumnPath[R, ?] = {
-    throw new IllegalStateException(s"Can walk further column")
+    throw new IllegalStateException("Can walk further column")
   }
 
   override def buildGetter: R => T = {

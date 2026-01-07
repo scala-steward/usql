@@ -209,7 +209,7 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
   }
 
   override def toPreSql: Sql = {
-    val maybeFilterSql: SqlInterpolationParameter = in.appliedFilters match {
+    in.appliedFilters match {
       case Some(f) => sql"WHERE ${f.toInterpolationParameter}"
       case None    => SqlInterpolationParameter.Empty
     }

@@ -2,8 +2,6 @@ package usql.dao
 
 import usql.{Optionalize, RowDecoder, RowEncoder}
 
-import scala.deriving.Mirror
-
 /**
  * Encapsulates column data and codecs for a product type.
  *

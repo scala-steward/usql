@@ -5,7 +5,7 @@ import usql.ConnectionProvider
 
 import java.sql.{Connection, DriverManager}
 import java.util.Properties
-import scala.util.{Random, Using}
+import scala.util.Using
 
 trait TestDatabaseSupport {
 
@@ -18,15 +18,15 @@ trait TestDatabase extends BeforeAndAfterEach with TestDatabaseSupport {
 
   protected def baseSql: String = ""
 
-  private var _rootConnection: Option[Connection]             = None
-  private var _urlAndProperties: Option[(String, Properties)] = None
+  private var _rootConnection: Option[Connection]             = None // scalafix:ok
+  private var _urlAndProperties: Option[(String, Properties)] = None // scalafix:ok
 
   protected def jdbcUrl: String = _urlAndProperties.getOrElse {
-    throw new IllegalStateException(s"No jdbc url")
+    throw new IllegalStateException("No jdbc url")
   }._1
 
   protected def jdbcPropertes: Properties = _urlAndProperties.getOrElse {
-    throw new IllegalStateException(s"No properties")
+    throw new IllegalStateException("No properties")
   }._2
 
   given cp: ConnectionProvider with {
@@ -61,7 +61,7 @@ trait TestDatabase extends BeforeAndAfterEach with TestDatabaseSupport {
   }
 
   protected def runSqlMultiline(sql: String): Unit = {
-    val splitted = splitSql(baseSql)
+    val splitted = splitSql(sql)
     splitted.foreach { line =>
       runSql(line)
     }

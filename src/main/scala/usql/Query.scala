@@ -1,6 +1,6 @@
 package usql
 
-import java.sql.{Connection, ResultSet}
+import java.sql.ResultSet
 import scala.util.Using
 
 /** An SQL Query */

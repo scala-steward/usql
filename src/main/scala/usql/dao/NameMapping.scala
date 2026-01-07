@@ -35,8 +35,8 @@ object NameMapping {
   /** Converts a string to snake case. */
   def snakeCase(s: String): String = {
     val builder     = StringBuilder()
-    var lastIsUpper = false
-    var first       = true
+    var lastIsUpper = false // scalafix:ok
+    var first       = true  // scalafix:ok
     s.foreach { c =>
       if c.isUpper && !lastIsUpper && !first then {
         builder += '_'

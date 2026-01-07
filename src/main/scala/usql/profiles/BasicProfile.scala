@@ -4,7 +4,6 @@ import usql.DataType
 
 import java.sql.{JDBCType, PreparedStatement, ResultSet, Timestamp}
 import java.time.Instant
-import java.util
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 

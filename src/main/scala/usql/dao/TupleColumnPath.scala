@@ -1,6 +1,6 @@
 package usql.dao
 
-import usql.{SqlColumnId, SqlInterpolationParameter}
+import usql.SqlColumnId
 
 sealed trait TupleColumnPath[R, T <: Tuple] extends ColumnPath[R, T] {
   final override def structure: SqlFielded[T] = structureAt(1)

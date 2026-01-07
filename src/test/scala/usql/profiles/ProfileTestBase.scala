@@ -1,6 +1,6 @@
 package usql.profiles
 
-import usql.util.{TestBase, TestBaseWithDatabase, TestDatabase}
+import usql.util.TestBaseWithDatabase
 import usql.*
 import BasicProfile.*
 
