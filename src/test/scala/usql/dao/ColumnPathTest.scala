@@ -127,7 +127,7 @@ class ColumnPathTest extends TestBase {
       "sub2_biz"
     )
     path.structure shouldBe Sample.derived$SqlFielded
-    val subStructure                            = path.sub.structure.asInstanceOf[SqlFielded[SubElement]]
+    path.sub.structure.asInstanceOf[SqlFielded[SubElement]]
 
     val pair: ColumnPath[Sample, (Int, Int)] = (path.x, path.y)
     pair.structure.columns.map(_.id.name) shouldBe Seq(

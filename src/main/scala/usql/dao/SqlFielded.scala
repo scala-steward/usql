@@ -1,7 +1,7 @@
 package usql.dao
 
 import usql.SqlInterpolationParameter.SqlParameter
-import usql.{Optionalize, RowDecoder, RowEncoder, SqlColumnId, SqlInterpolationParameter}
+import usql.{Optionalize, RowDecoder, RowEncoder, SqlColumnId}
 
 import java.sql.{PreparedStatement, ResultSet}
 import java.util.UUID
@@ -31,7 +31,7 @@ trait SqlFielded[T] extends SqlColumnar[T] {
   override def rowDecoder: RowDecoder[T] = new RowDecoder {
     override def parseRow(offset: Int, row: ResultSet): T = {
       val fieldValues   = Seq.newBuilder[Any]
-      var currentOffset = offset
+      var currentOffset = offset // scalafix:ok
       fields.foreach { field =>
         fieldValues += field.decoder.parseRow(currentOffset, row)
         currentOffset += field.decoder.cardinality
@@ -44,7 +44,7 @@ trait SqlFielded[T] extends SqlColumnar[T] {
 
   override def rowEncoder: RowEncoder[T] = new RowEncoder[T] {
     override def encode(offset: Int, ps: PreparedStatement, value: T): Unit = {
-      var currentOffset = offset
+      var currentOffset = offset // scalafix:ok
       val fieldValues   = split(value)
       fieldValues.zip(fields).foreach { case (fieldValue, field) =>
         field.encoder.fillUnchecked(currentOffset, ps, fieldValue)
@@ -250,7 +250,7 @@ object SqlFielded {
 
   case class WithColumnsRenamed[T](base: SqlFielded[T], columnIds: Seq[SqlColumnId]) extends SqlFielded[T] {
     override lazy val fields: Seq[Field[?]] = {
-      var remainingColumns = columnIds
+      var remainingColumns = columnIds // scalafix:ok
       val result           = Seq.newBuilder[Field[?]]
       base.fields.foreach {
         case g: Field.Group[?]  =>

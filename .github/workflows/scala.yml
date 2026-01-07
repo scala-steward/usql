@@ -41,4 +41,4 @@ jobs:
         POSTGRES_HOST: localhost
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
-      run: sbt "test;scalafmtCheckAll"
+      run: sbt "test;lintCheck"

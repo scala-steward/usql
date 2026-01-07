@@ -14,11 +14,11 @@ trait PostgresSupport extends TestDatabaseSupport with BeforeAndAfterEach {
   private val postgresUser: String             = sys.env.getOrElse("POSTGRES_USER", "postgres")
   private val postgresPassword: Option[String] = sys.env.get("POSTGRES_PASSWORD")
 
-  private var _dbName: Option[String] = None
+  private var _dbName: Option[String] = None // scalafix:ok
 
   protected def dbName: String = {
     _dbName.getOrElse {
-      throw new IllegalStateException(s"DB name not initialized?!")
+      throw new IllegalStateException("DB name not initialized?!")
     }
   }
 

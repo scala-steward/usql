@@ -1,6 +1,6 @@
 package usql.dao
 
-import usql.{ConnectionProvider, Query, RowDecoder, Sql, SqlInterpolationParameter, sql}
+import usql.{ConnectionProvider, Query, RowDecoder, Sql}
 
 import java.util.UUID
 

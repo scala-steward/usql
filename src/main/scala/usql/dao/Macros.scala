@@ -1,6 +1,6 @@
 package usql.dao
 
-import usql.{DataType, RowDecoder, RowEncoder, SqlColumnId, SqlTableId}
+import usql.{DataType, SqlColumnId, SqlTableId}
 
 import scala.annotation.Annotation
 import scala.compiletime.{erasedValue, summonInline}

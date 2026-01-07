@@ -39,7 +39,18 @@ ThisBuild / version      := artefactVersion
 ThisBuild / organization := "net.reactivecore"
 ThisBuild / scalaVersion := "3.7.4"
 ThisBuild / Test / fork  := true
-ThisBuild / scalacOptions ++= Seq("-new-syntax", "-rewrite")
+ThisBuild / scalacOptions ++= Seq(
+  "-new-syntax",
+  "-rewrite",
+  "-Wunused:all",
+  "-Wunused:strict-no-implicit-warn",
+  "-Wconf:any:e",                                      // All Warnings are errors
+  "-Wconf:src=src_managed/.*:silent",                  // No Warnings inside generated code
+  "-Wconf:msg=unused private member&src=test/*:silent" // Do not care about unused stuff in Testcases
+)
+
+ThisBuild / semanticdbEnabled := true
+ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 val scalaTestVersion = "3.2.19"
 
@@ -54,3 +65,7 @@ lazy val root = (project in file("."))
     ),
     publishSettings
   )
+
+addCommandAlias("lint", "scalafmtAll;scalafixAll")
+
+addCommandAlias("lintCheck", "scalafmtCheckAll; scalafixAll --check")

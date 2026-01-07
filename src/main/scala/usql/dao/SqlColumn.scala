@@ -1,6 +1,6 @@
 package usql.dao
 
-import usql.{DataType, Optionalize, RowDecoder, RowEncoder, SqlColumnId, SqlRawPart}
+import usql.{DataType, Optionalize, RowDecoder, RowEncoder, SqlColumnId}
 
 /** A Single Column */
 case class SqlColumn[T](
