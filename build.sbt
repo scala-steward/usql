@@ -39,7 +39,15 @@ ThisBuild / version      := artefactVersion
 ThisBuild / organization := "net.reactivecore"
 ThisBuild / scalaVersion := "3.7.4"
 ThisBuild / Test / fork  := true
-ThisBuild / scalacOptions ++= Seq("-new-syntax", "-rewrite")
+ThisBuild / scalacOptions ++= Seq(
+  "-new-syntax",
+  "-rewrite",
+  "-Wunused:all",
+  "-Wunused:strict-no-implicit-warn"
+)
+
+ThisBuild / semanticdbEnabled := true
+ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 val scalaTestVersion = "3.2.19"
 
@@ -54,3 +62,7 @@ lazy val root = (project in file("."))
     ),
     publishSettings
   )
+
+addCommandAlias("lint", "scalafmtAll;scalafixAll")
+
+addCommandAlias("lintCheck", "scalafmtCheckAll; scalafixAll --check")
