@@ -3,6 +3,7 @@ package usql.dao
 import usql.dao.Rep.SqlRep
 import usql.{DataType, Sql, SqlInterpolationParameter, sql}
 
+import scala.annotation.unused
 import scala.language.implicitConversions
 
 /** Typed representation for a typed value (either a [[ColumnPath]] or some raw SQL) */
@@ -41,11 +42,11 @@ trait Rep[T] {
     SqlRep(sql"${toInterpolationParameter} OR ${rep.toInterpolationParameter}")
   }
 
-  def isNull(using T => Option[?]): Rep[Boolean] = {
+  def isNull(using @unused optCheck: T => Option[?]): Rep[Boolean] = {
     SqlRep(sql"${toInterpolationParameter} IS NULL")
   }
 
-  def isNotNull(using T => Option[?]): Rep[Boolean] = {
+  def isNotNull(using @unused optCheck: T => Option[?]): Rep[Boolean] = {
     SqlRep(sql"${toInterpolationParameter} IS NOT NULL")
   }
 }
