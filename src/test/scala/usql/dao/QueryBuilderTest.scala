@@ -173,4 +173,23 @@ class QueryBuilderTest extends TestBaseWithH2 {
     val all = Person.findAll()
     all should contain theSameElementsAs Seq(alice.copy(name = "AliceX"), bob, charly)
   }
+
+  it should "update whole objects" in new EnvWithSamples {
+    val alice2 = alice.copy(
+      name = "AliceX",
+      age = Some(43)
+    )
+    Person.query.filter(_.id === 1).update(alice2) shouldBe 1
+    Person.findAll() should contain theSameElementsAs Seq(alice2, bob, charly)
+
+    val alice3 = alice2.copy(
+      age = None
+    )
+
+    Person.query.filter(_.id === 1).update(alice3) shouldBe 1
+    Person.findAll() should contain theSameElementsAs Seq(alice3, bob, charly)
+
+    Person.query.filter(_.id === 666).update(alice) shouldBe 0
+    Person.findAll() should contain theSameElementsAs Seq(alice3, bob, charly)
+  }
 }
