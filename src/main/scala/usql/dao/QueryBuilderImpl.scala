@@ -140,7 +140,20 @@ private[usql] case class SimpleTableSelect[T](
     }
   }
 
-  override def update(in: T)(using cp: ConnectionProvider): Int = ???
+  override def update(value: T)(using cp: ConnectionProvider): Int = {
+    updatePartly(value, fielded)
+  }
+
+  def updatePartly[P](value: P, structure: SqlFielded[P])(using cp: ConnectionProvider): Int = {
+    val split  = structure.rowEncoder.toSqlParameter(value)
+    val setter = SqlInterpolationParameter.MultipleSeparated(
+      structure.columns.zip(split).map { case (column, value) =>
+        sql"${column.id} = ${value}"
+      }
+    )
+    val sql    = sql"UPDATE ${tabular.table} SET $setter ${maybeFilterSql}"
+    sql.update.run()
+  }
 
   override def delete()(using cp: ConnectionProvider): Int = {
     sql"DELETE FROM ${tabular.table} ${maybeFilterSql}".update.run()
@@ -181,15 +194,9 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
     extends QueryBuilderForProjectedTable[P]
     with QueryBuilderBase[P]
     with QueryBuilderProjected[T, P] {
+
   override def update(value: P)(using cp: ConnectionProvider): Int = {
-    val split  = fielded.rowEncoder.toSqlParameter(value)
-    val setter = SqlInterpolationParameter.MultipleSeparated(
-      fielded.columns.zip(split).map { case (column, value) =>
-        sql"${column.id} = ${value}"
-      }
-    )
-    val sql    = sql"UPDATE ${in.tabular.table} SET $setter ${in.maybeFilterSql}"
-    sql.update.run()
+    in.updatePartly(value, fielded)
   }
 
   override def map[R0](f: ColumnPath[P, P] => ColumnPath[P, R0]): QueryBuilderForProjectedTable[R0] = {
