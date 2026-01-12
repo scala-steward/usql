@@ -35,11 +35,11 @@ trait Rep[T] {
   }
 
   def &&(using T =:= Boolean)(rep: Rep[Boolean]): Rep[Boolean] = {
-    SqlRep(sql"${toInterpolationParameter} AND ${rep.toInterpolationParameter}")
+    SqlRep(sql"(${toInterpolationParameter}) AND (${rep.toInterpolationParameter})")
   }
 
   def ||(using T =:= Boolean)(rep: Rep[Boolean]): Rep[Boolean] = {
-    SqlRep(sql"${toInterpolationParameter} OR ${rep.toInterpolationParameter}")
+    SqlRep(sql"(${toInterpolationParameter}) OR (${rep.toInterpolationParameter})")
   }
 
   def isNull(using @unused optCheck: T => Option[?]): Rep[Boolean] = {
@@ -48,6 +48,10 @@ trait Rep[T] {
 
   def isNotNull(using @unused optCheck: T => Option[?]): Rep[Boolean] = {
     SqlRep(sql"${toInterpolationParameter} IS NOT NULL")
+  }
+
+  def unary_!(using T =:= Boolean): Rep[Boolean] = {
+    SqlRep(sql"NOT (${toInterpolationParameter})")
   }
 }
 
