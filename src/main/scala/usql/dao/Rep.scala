@@ -49,6 +49,10 @@ trait Rep[T] {
   def isNotNull(using @unused optCheck: T => Option[?]): Rep[Boolean] = {
     SqlRep(sql"${toInterpolationParameter} IS NOT NULL")
   }
+
+  def unary_!(using T =:= Boolean): Rep[Boolean] = {
+    SqlRep(sql"NOT (${toInterpolationParameter})")
+  }
 }
 
 object Rep {

@@ -98,6 +98,15 @@ class QueryBuilderTest extends TestBaseWithH2 {
     names shouldBe Seq("Alice")
   }
 
+  it should "also support negation operations" in new EnvWithSamples {
+    val query = Person.query
+      .filter(x => !x.age.isNull)
+      .map(_.name)
+
+    val names = query.all()
+    names should contain theSameElementsAs Seq("Alice")
+  }
+
   it should "work with a single join" in new EnvWithSamples {
     val foo: QueryBuilder[(Person, Int)] = Person.query
       .join(PersonPermission.query)(_.id === _.personId)
