@@ -84,6 +84,20 @@ class QueryBuilderTest extends TestBaseWithH2 {
     withoutAgeQuery.count() shouldBe 2
   }
 
+  it should "correctly order operators" in new EnvWithSamples {
+    val query = Person.query
+      .filter(x => x.age.isNotNull && (x.name === "Alice" || x.name === "Bob"))
+      .map(_.name)
+
+    println(s"Query = ${query.sql}")
+
+    val names = query.all()
+
+    // This fails, when the query SELECT name AS name FROM person WHERE age IS NOT NULL AND name = ? OR name = ? is used
+
+    names shouldBe Seq("Alice")
+  }
+
   it should "work with a single join" in new EnvWithSamples {
     val foo: QueryBuilder[(Person, Int)] = Person.query
       .join(PersonPermission.query)(_.id === _.personId)
