@@ -20,6 +20,13 @@ class QueryBuilderTest extends TestBaseWithH2 {
       |  permission_id INT REFERENCES permission(id),
       |  PRIMARY KEY(person_id, permission_id)
       |);
+      |CREATE TABLE location (
+      |  id INT PRIMARY KEY,
+      |  person_id INT REFERENCES person(id),
+      |  name VARCHAR,
+      |  coordinate_x INT,
+      |  coordinate_y INT
+      |);
       |""".stripMargin
 
   case class Person(
@@ -195,6 +202,32 @@ class QueryBuilderTest extends TestBaseWithH2 {
     Person.query.filter(_.id === 1).map(_.name).update("AliceX")
     val all = Person.findAll()
     all should contain theSameElementsAs Seq(alice.copy(name = "AliceX"), bob, charly)
+  }
+
+  case class Coordinate(x: Int, y: Int) derives SqlFielded
+
+  case class Location(id: Int, personId: Int, name: String, @ColumnGroup coordinate: Coordinate) derives SqlTabular
+
+  object Location extends KeyedCrudBase[Int, Location] {
+    override def key: KeyColumnPath = cols.id
+
+    override lazy val tabular: SqlTabular[Location] = summon
+  }
+
+  it should "work with joins on tables with embedded column groups" in new EnvWithSamples {
+    val home = Location(1, alice.id, "Home", Coordinate(10, 20))
+    val work = Location(2, bob.id, "Work", Coordinate(30, 40))
+    Location.insert(home, work)
+
+    val query = Person.query
+      .join(Location.query)(_.id === _.personId)
+      .map(x => (x._1.name, x._2))
+
+    val results = query.all()
+    results should contain theSameElementsAs Seq(
+      ("Alice", home),
+      ("Bob", work)
+    )
   }
 
   it should "update whole objects" in new EnvWithSamples {
