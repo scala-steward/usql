@@ -256,6 +256,7 @@ object SqlFielded {
         case g: Field.Group[?]  =>
           val (fieldColumns, newRemainingColumns) = remainingColumns.splitAt(g.fielded.cardinality)
           result += g.copy(
+            mapping = ColumnGroupMapping.Anonymous,
             fielded = WithColumnsRenamed(g.fielded, fieldColumns)
           )
           remainingColumns = newRemainingColumns
