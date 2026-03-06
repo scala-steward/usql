@@ -55,7 +55,7 @@ private[usql] trait QueryBuilderProjected[T, P] extends QueryBuilder[P] {
   )
 }
 
-private def ensureFielded[C](in: SqlColumn[C] | SqlFielded[C]): SqlFielded[C] = {
+private def ensureFielded[C](in: Structure[C]): SqlFielded[C] = {
   in match {
     case f: SqlFielded[C] => f
     case c: SqlColumn[C]  => SqlFielded.PseudoFielded(c)
@@ -91,7 +91,7 @@ private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[
   override def project[P2](p: ColumnPath[P, P2]): Select[T, P2] = {
     Select(
       from,
-      projection = ColumnPath.concat(projection, p),
+      projection = projection.append(p),
       filters
     )
   }
@@ -204,7 +204,7 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
   }
 
   override def project[X](p: ColumnPath[P, X]): QueryBuilderForProjectedTable[X] = {
-    val newProjection = ColumnPath.concat(projection, p)
+    val newProjection = projection.append(p)
     copy(projection = newProjection)
   }
 
@@ -219,7 +219,7 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
 
   override def filter(f: ColumnBasePath[P] => Rep[Boolean]): QueryBuilder[P] = {
     val mappedFilter: ColumnBasePath[T] => Rep[Boolean] = in => {
-      f(ColumnPath.concat(in, projection))
+      f(in.append(projection))
     }
     copy(
       in.copy(
