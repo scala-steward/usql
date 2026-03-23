@@ -25,7 +25,7 @@ private[usql] object FromItem {
   }
 
   case class SubSelect[T](query2: QueryBuilder[T]) extends FromItem[T] {
-    override def fielded: SqlFielded[T] = query2.fielded.dropAlias
+    override def fielded: SqlFielded[T] = query2.structure.toFielded.dropAlias
 
     override def toPreSql: Sql = sql"(${query2.toPreSql})"
   }

@@ -37,29 +37,22 @@ private[usql] trait QueryBuilderProjected[T, P] extends QueryBuilder[P] {
   /** The projection. */
   def projection: ColumnPath[T, P]
 
-  /** The fielded representation from the outside. */
-  lazy val fielded: SqlFielded[P] = {
-    innerFielded.ensureUniqueColumnIds(keepAlias = false)
+  /** The structure from the outside. */
+  lazy val structure: Structure[P] = {
+    innerStructure.ensureUniqueColumnIds(keepAlias = false)
   }
 
-  /** The fielded representation inside. */
-  lazy val innerFielded: SqlFielded[P] = {
-    ensureFielded(projection.structure)
+  /** The structure inside. */
+  lazy val innerStructure: Structure[P] = {
+    projection.structure
   }
 
   /** The projection SQL String */
   protected def projectionString = SqlInterpolationParameter.MultipleSeparated(
-    projection.columnIds.zip(fielded.columns.map(_.id)).map { case (p, as) =>
+    projection.columnIds.zip(structure.columns.map(_.id)).map { case (p, as) =>
       sql"${p} AS ${as}"
     }
   )
-}
-
-private def ensureFielded[C](in: Structure[C]): SqlFielded[C] = {
-  in match {
-    case f: SqlFielded[C] => f
-    case c: SqlColumn[C]  => SqlFielded.PseudoFielded(c)
-  }
 }
 
 /** A Generic select from a [[FromItem]] */
@@ -77,7 +70,7 @@ private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[
   }
 
   protected def basePath: ColumnPath[P, P] = {
-    ColumnPath.make[P](using innerFielded)
+    ColumnPath.make[P](using innerStructure)
   }
 
   override def filter(f: ColumnBasePath[P] => Rep[Boolean]): Select[T, P] = {
@@ -141,10 +134,10 @@ private[usql] case class SimpleTableSelect[T](
   }
 
   override def update(value: T)(using cp: ConnectionProvider): Int = {
-    updatePartly(value, fielded)
+    updatePartly(value, structure)
   }
 
-  def updatePartly[P](value: P, structure: SqlFielded[P])(using cp: ConnectionProvider): Int = {
+  def updatePartly[P](value: P, structure: Structure[P])(using cp: ConnectionProvider): Int = {
     val split  = structure.rowEncoder.toSqlParameter(value)
     val setter = SqlInterpolationParameter.MultipleSeparated(
       structure.columns.zip(split).map { case (column, value) =>
@@ -174,7 +167,7 @@ private[usql] case class SimpleTableSelect[T](
     }
   }
 
-  override def fielded: SqlFielded[T] = tabular
+  override def structure: Structure[T] = tabular
 
   protected def basePath: ColumnPath[T, T] = {
     ColumnPath.make[T](using tabular)
@@ -196,7 +189,7 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
     with QueryBuilderProjected[T, P] {
 
   override def update(value: P)(using cp: ConnectionProvider): Int = {
-    in.updatePartly(value, fielded)
+    in.updatePartly(value, structure)
   }
 
   override def map[R0](f: ColumnPath[P, P] => ColumnPath[P, R0]): QueryBuilderForProjectedTable[R0] = {
@@ -232,5 +225,5 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
     in.count()
   }
 
-  override protected def basePath: ColumnPath[P, P] = ColumnPath.make[P](using fielded)
+  override protected def basePath: ColumnPath[P, P] = ColumnPath.make[P](using structure)
 }

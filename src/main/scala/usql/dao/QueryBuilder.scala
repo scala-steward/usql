@@ -12,13 +12,13 @@ trait QueryBuilder[T] extends Query[T] {
   /** Convert this query to SQL. */
   final def sql: Sql = toPreSql.simplifyAliases
 
-  override def rowDecoder: RowDecoder[T] = fielded.rowDecoder
+  override def rowDecoder: RowDecoder[T] = structure.rowDecoder
 
   /** Convert this query to SQL (before End-Optimizations) */
   private[usql] def toPreSql: Sql
 
-  /** Tabular representation of the result. */
-  def fielded: SqlFielded[T]
+  /** Structure of the result. */
+  def structure: Structure[T]
 
   /** Map one element. */
   def map[R0](f: ColumnPath[T, T] => ColumnPath[T, R0]): QueryBuilder[R0]

@@ -27,11 +27,11 @@ object Macros {
   object TypeInfo {
     case class Scalar[T](dataType: DataType[T]) extends TypeInfo[T]
 
-    case class Columnar[T](columnar: SqlColumnar[T]) extends TypeInfo[T]
+    case class Structual[T](columnar: Structure[T]) extends TypeInfo[T]
 
-    given scalar[T](using dt: DataType[T]): TypeInfo[T]                                                   = Scalar(dt)
-    given columnar[T](using c: SqlColumnar[T]): TypeInfo[T]                                               = Columnar(c)
-    given optional[T](using c: SqlColumnar[T], notOption: NotGiven[T <:< Option[?]]): TypeInfo[Option[T]] = Columnar(
+    given scalar[T](using dt: DataType[T]): TypeInfo[T]                                                 = Scalar(dt)
+    given columnar[T](using c: Structure[T]): TypeInfo[T]                                               = Structual(c)
+    given optional[T](using c: Structure[T], notOption: NotGiven[T <:< Option[?]]): TypeInfo[Option[T]] = Structual(
       c.optionalize
     ).asInstanceOf[TypeInfo[Option[T]]]
   }
@@ -141,7 +141,7 @@ object Macros {
           val id             = nameAnnotation.map(a => SqlColumnId.fromString(a.name)).getOrElse(nm.columnToSql(label))
           val column         = SqlColumn(id, typeInfo.dataType)
           Field.Column(label, column)
-        case ((label, annotations), c: TypeInfo.Columnar[?])      =>
+        case ((label, annotations), c: TypeInfo.Structual[?])     =>
           val nameAnnotation = getMaxOneAnnotation[ColumnName](annotations)
           val columnGroup    = getMaxOneAnnotation[ColumnGroup](annotations)
           val mapping        = columnGroup.map(_.mapping).getOrElse(ColumnGroupMapping.Pattern())

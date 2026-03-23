@@ -1,7 +1,7 @@
 package usql
 
 import usql.SqlInterpolationParameter.SqlParameter
-import usql.dao.SqlColumnar
+import usql.dao.Structure
 
 import java.sql.PreparedStatement
 
@@ -35,7 +35,7 @@ trait RowEncoder[T] {
   /** The number of elements set by this filler */
   def cardinality: Int
 
-  /** Serialize into values matching the DataTypes of [[SqlColumnar]] */
+  /** Serialize into values matching the DataTypes of [[Structure]] */
   def serialize(value: T): Seq[Any]
 
   /** Serialize something without type checking. */
@@ -93,5 +93,5 @@ object RowEncoder {
     }
   }
 
-  given forColumnar[T](using c: SqlColumnar[T]): RowEncoder[T] = c.rowEncoder
+  given forStructure[T](using c: Structure[T]): RowEncoder[T] = c.rowEncoder
 }

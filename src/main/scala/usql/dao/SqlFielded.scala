@@ -10,7 +10,7 @@ import scala.deriving.Mirror
 import scala.util.NotGiven
 
 /** Something which has fields (e.g. a case class) */
-trait SqlFielded[T] extends SqlColumnar[T] with Structure[T] {
+trait SqlFielded[T] extends Structure[T] {
 
   /** Returns the available fields. */
   def fields: Seq[Field[?]]
@@ -102,7 +102,7 @@ trait SqlFielded[T] extends SqlColumnar[T] with Structure[T] {
    * @param keepAlias
    *   if true, keep the alias names.
    */
-  def ensureUniqueColumnIds(keepAlias: Boolean): SqlFielded[T] = {
+  override def ensureUniqueColumnIds(keepAlias: Boolean): SqlFielded[T] = {
     val columnIds       = columns.map(_.id)
     val inUse           = mutable.Set[SqlColumnId]()
     val resultColumnIds = Seq.newBuilder[SqlColumnId]
@@ -132,6 +132,8 @@ trait SqlFielded[T] extends SqlColumnar[T] with Structure[T] {
   override def toField(fieldName: String): Field[T] = {
     Field.Group(fieldName, ColumnGroupMapping.Anonymous, SqlColumnId.fromString(fieldName), this)
   }
+
+  override private[usql] def toFielded: SqlFielded[T] = this
 }
 
 object SqlFielded {

@@ -180,7 +180,7 @@ class QueryBuilderTest extends TestBaseWithH2 {
     val persons = Person.query
       .map(p => (p.id, p.id))
 
-    persons.fielded.columns.distinct shouldBe Seq(
+    persons.structure.columns.distinct shouldBe Seq(
       SqlColumn("id", DataType.get[Int]),
       SqlColumn("id0", DataType.get[Int])
     )
