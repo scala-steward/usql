@@ -1,7 +1,6 @@
 package usql.dao
 
 import usql.{SqlColumnId, SqlTableId}
-import usql.profiles.BasicProfile.*
 import usql.util.TestBaseWithH2
 
 import scala.language.implicitConversions

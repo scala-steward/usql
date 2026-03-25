@@ -37,13 +37,12 @@ def publishSettings = Seq(
 
 ThisBuild / version      := artefactVersion
 ThisBuild / organization := "net.reactivecore"
-ThisBuild / scalaVersion := "3.7.4"
+ThisBuild / scalaVersion := "3.8.2"
 ThisBuild / Test / fork  := true
 ThisBuild / scalacOptions ++= Seq(
   "-new-syntax",
   "-rewrite",
   "-Wunused:all",
-  "-Wunused:strict-no-implicit-warn",
   "-Wconf:any:e",                                      // All Warnings are errors
   "-Wconf:src=src_managed/.*:silent",                  // No Warnings inside generated code
   "-Wconf:msg=unused private member&src=test/*:silent" // Do not care about unused stuff in Testcases

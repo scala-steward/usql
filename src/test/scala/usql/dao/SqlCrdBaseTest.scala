@@ -1,7 +1,6 @@
 package usql.dao
 
 import usql.SqlColumnId
-import usql.profiles.BasicProfile.*
 import usql.util.TestBaseWithH2
 
 class SqlCrdBaseTest extends TestBaseWithH2 {
