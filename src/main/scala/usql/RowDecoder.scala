@@ -1,6 +1,6 @@
 package usql
 
-import usql.dao.SqlColumnar
+import usql.dao.Structure
 import java.sql.ResultSet
 
 /** Decoder for singles rows in a [[ResultSet]] */
@@ -71,5 +71,5 @@ object RowDecoder {
     override def cardinality: Int = rd.cardinality
   }
 
-  given forColumnar[T](using c: SqlColumnar[T]): RowDecoder[T] = c.rowDecoder
+  given forStructure[T](using c: Structure[T]): RowDecoder[T] = c.rowDecoder
 }

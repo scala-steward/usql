@@ -7,6 +7,7 @@ import scala.compiletime.{erasedValue, summonInline}
 import scala.deriving.Mirror
 import scala.quoted.{Expr, Quotes, Type}
 import scala.reflect.ClassTag
+import scala.util.NotGiven
 
 object Macros {
 
@@ -26,10 +27,13 @@ object Macros {
   object TypeInfo {
     case class Scalar[T](dataType: DataType[T]) extends TypeInfo[T]
 
-    case class Columnar[T](columnar: SqlColumnar[T]) extends TypeInfo[T]
+    case class Structual[T](columnar: Structure[T]) extends TypeInfo[T]
 
-    given scalar[T](using dt: DataType[T]): TypeInfo[T]     = Scalar(dt)
-    given columnar[T](using c: SqlColumnar[T]): TypeInfo[T] = Columnar(c)
+    given scalar[T](using dt: DataType[T]): TypeInfo[T]                                                 = Scalar(dt)
+    given columnar[T](using c: Structure[T]): TypeInfo[T]                                               = Structual(c)
+    given optional[T](using c: Structure[T], notOption: NotGiven[T <:< Option[?]]): TypeInfo[Option[T]] = Structual(
+      c.optionalize
+    ).asInstanceOf[TypeInfo[Option[T]]]
   }
 
   /** Combined TypeInfos for a tuple. */
@@ -56,7 +60,7 @@ object Macros {
         SqlTableId.fromString(tn.name)
       }
       .getOrElse {
-        nm.caseClassToTableId(typeName[T])
+        nm.caseClassToTableId(summonInline[ValueOf[mirror.MirroredLabel]].value)
       }
 
     SqlTabular.SimpleTabular(
@@ -64,14 +68,6 @@ object Macros {
       fielded = fielded,
       isOptional = false
     )
-  }
-
-  inline def typeName[T]: String = {
-    ${ typeNameImpl[T] }
-  }
-
-  def typeNameImpl[T](using types: Type[T], quotes: Quotes): Expr[String] = {
-    Expr(Type.show[T])
   }
 
   inline def deriveLabels[T](using m: Mirror.Of[T]): List[String] = {
@@ -145,7 +141,7 @@ object Macros {
           val id             = nameAnnotation.map(a => SqlColumnId.fromString(a.name)).getOrElse(nm.columnToSql(label))
           val column         = SqlColumn(id, typeInfo.dataType)
           Field.Column(label, column)
-        case ((label, annotations), c: TypeInfo.Columnar[?])      =>
+        case ((label, annotations), c: TypeInfo.Structual[?])     =>
           val nameAnnotation = getMaxOneAnnotation[ColumnName](annotations)
           val columnGroup    = getMaxOneAnnotation[ColumnGroup](annotations)
           val mapping        = columnGroup.map(_.mapping).getOrElse(ColumnGroupMapping.Pattern())

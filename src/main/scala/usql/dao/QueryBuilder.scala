@@ -1,10 +1,8 @@
 package usql.dao
 
-import usql.{ConnectionProvider, Query, RowDecoder, Sql}
+import usql.{ConnectionProvider, Optionalize, Query, RowDecoder, Sql}
 
 import java.util.UUID
-
-type ColumnBasePath[T] = ColumnPath[?, T]
 
 /** A Query Builder based upon filter, map and join methods. */
 trait QueryBuilder[T] extends Query[T] {
@@ -12,18 +10,22 @@ trait QueryBuilder[T] extends Query[T] {
   /** Convert this query to SQL. */
   final def sql: Sql = toPreSql.simplifyAliases
 
-  override def rowDecoder: RowDecoder[T] = fielded.rowDecoder
+  override def rowDecoder: RowDecoder[T] = structure.rowDecoder
 
   /** Convert this query to SQL (before End-Optimizations) */
   private[usql] def toPreSql: Sql
 
-  /** Tabular representation of the result. */
-  def fielded: SqlFielded[T]
+  /** Structure of the result. */
+  def structure: Structure[T]
 
   /** Map one element. */
-  def map[R0](f: ColumnPath[T, T] => ColumnPath[T, R0]): QueryBuilder[R0]
+  def map[P](f: ColumnRootPath[T] => ColumnPath[T, P]): QueryBuilder[P] = {
+    project(f(columnRootPath))
+  }
 
-  /** Project values. */
+  protected def columnRootPath: ColumnRootPath[T] = ColumnPath.make(using structure)
+
+  /** Project using a Column Path */
   def project[P](p: ColumnPath[T, P]): QueryBuilder[P]
 
   /** Filter step. */
@@ -35,7 +37,7 @@ trait QueryBuilder[T] extends Query[T] {
   /** Left Join two Queries */
   def leftJoin[R](right: QueryBuilder[R])(
       on: (ColumnBasePath[T], ColumnBasePath[R]) => Rep[Boolean]
-  ): QueryBuilder[(T, Option[R])]
+  ): QueryBuilder[(T, Optionalize[R])]
 
   /** Converts into a From Item which has an alias. */
   private[usql] def asAliasedFromItem(): FromItem[T] = {
@@ -53,7 +55,9 @@ trait QueryBuilderForProjectedTable[T] extends QueryBuilder[T] {
   /** Update elements. */
   def update(in: T)(using cp: ConnectionProvider): Int
 
-  override def map[R0](f: ColumnPath[T, T] => ColumnPath[T, R0]): QueryBuilderForProjectedTable[R0]
+  override def map[P](f: ColumnPath[T, T] => ColumnPath[T, P]): QueryBuilderForProjectedTable[P] = {
+    project(f(columnRootPath))
+  }
 
   override def project[P](p: ColumnPath[T, P]): QueryBuilderForProjectedTable[P]
 }

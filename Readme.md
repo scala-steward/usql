@@ -12,6 +12,7 @@ Version Matrix
 
 | Version | JVM Version | Scala Version |
 |---------|-------------|---------------|
+| 0.5.x   | 21+         | 3.8.x+        |
 | 0.4.x   | 21+         | 3.7.x+        |
 | 0.3.x   | 21+         | 3.7.x+        |
 | 0.2.x   | 17+         | 3.3.x+        |           
@@ -163,7 +164,7 @@ Try {
 
 DAO (Data Access Objects) can be created using the base classes `CrdBase` and `KeyedCrudBase`.
 
-They are using a helper description object called `SqlColumnar` and `SqlTabular`.
+They are using a helper description object called `Structure` and `SqlTabular`.
 
 ```scala 3
 import usql.dao.*
@@ -188,7 +189,7 @@ Person.update(Person(6, "Franziska"))
 println(Person.findByKey(6)) // Person(6, Franziska)
 ```
 
-## Scala 3.7.0+ Named Tuples
+## Named Tuples
 
 ```scala 3
 // Person.col.id will be automatically checked.
@@ -218,8 +219,9 @@ The query builder also supports simple inner and left joins. They still need mor
 
 ## DAO Core Types
 
-- `SqlColumnar` describes something which has columns.
-- `SqlFielded` describes a field structure for a case class, is a `SqlColumnar[T]` 
+- `Structure` something which has columns, either SqlFielded or SqlColumn
+- `SqlFielded` a field structure for a case class, is a `Structure[T]` 
+- `SqlColumn` a single column
 - `SqlTabular` like `SqlFielded`, but also contains a table name
 - `Crd` basic Create-Read-Delete operations
 - `KeyedCrud` Crd for single-keyed types

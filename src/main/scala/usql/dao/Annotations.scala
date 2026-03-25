@@ -7,7 +7,7 @@ import scala.annotation.StaticAnnotation
 /** Annotation to override the default table name in [[SqlTabular]] */
 case class TableName(name: String) extends StaticAnnotation
 
-/** Annotation to override the default column name in [[SqlColumnar]] */
+/** Annotation to override the default column name in [[SqlFielded]] */
 case class ColumnName(name: String) extends StaticAnnotation {
   def id: SqlColumnId = SqlColumnId.fromString(name)
 }

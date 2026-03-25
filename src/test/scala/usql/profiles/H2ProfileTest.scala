@@ -1,7 +1,6 @@
 package usql.profiles
 
 import usql.DataType
-import usql.profiles.H2Profile.given
 import usql.util.TestBaseWithH2
 import usql.*
 

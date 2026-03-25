@@ -1,14 +1,11 @@
 package usql.dao
 
-import usql.{ConnectionProvider, Sql, SqlInterpolationParameter, sql}
+import usql.{ConnectionProvider, Optionalize, Sql, SqlInterpolationParameter, sql}
 import usql.profiles.BasicProfile.intType
 
 import java.util.UUID
 
 private[usql] trait QueryBuilderBase[T] extends QueryBuilder[T] {
-
-  /** Returns the base path fore mapping operations. */
-  protected def basePath: ColumnBasePath[T]
 
   /** Join two queries. */
   def join[R](right: QueryBuilder[R])(
@@ -16,17 +13,17 @@ private[usql] trait QueryBuilderBase[T] extends QueryBuilder[T] {
   ): QueryBuilder[(T, R)] = {
     val leftSource  = this.asAliasedFromItem()
     val rightSource = right.asAliasedFromItem()
-    val joinSource  = FromItem.InnerJoin(leftSource, rightSource, on(leftSource.basePath, rightSource.basePath))
+    val joinSource  = FromItem.InnerJoin(leftSource, rightSource, on(leftSource.rootPath, rightSource.rootPath))
     Select.makeSelect(joinSource)
   }
 
   /** Left Join two Queries */
   def leftJoin[R](right: QueryBuilder[R])(
       on: (ColumnBasePath[T], ColumnBasePath[R]) => Rep[Boolean]
-  ): QueryBuilder[(T, Option[R])] = {
+  ): QueryBuilder[(T, Optionalize[R])] = {
     val leftSource  = this.asAliasedFromItem()
     val rightSource = right.asAliasedFromItem()
-    val joinSource  = FromItem.LeftJoin(leftSource, rightSource, on(leftSource.basePath, rightSource.basePath))
+    val joinSource  = FromItem.LeftJoin(leftSource, rightSource, on(leftSource.rootPath, rightSource.rootPath))
     Select.makeSelect(joinSource)
   }
 }
@@ -37,29 +34,22 @@ private[usql] trait QueryBuilderProjected[T, P] extends QueryBuilder[P] {
   /** The projection. */
   def projection: ColumnPath[T, P]
 
-  /** The fielded representation from the outside. */
-  lazy val fielded: SqlFielded[P] = {
-    innerFielded.ensureUniqueColumnIds(keepAlias = false)
+  /** The structure from the outside. */
+  lazy val structure: Structure[P] = {
+    innerStructure.ensureUniqueColumnIds(keepAlias = false)
   }
 
-  /** The fielded representation inside. */
-  lazy val innerFielded: SqlFielded[P] = {
-    ensureFielded(projection.structure)
+  /** The structure inside. */
+  lazy val innerStructure: Structure[P] = {
+    projection.structure
   }
 
   /** The projection SQL String */
   protected def projectionString = SqlInterpolationParameter.MultipleSeparated(
-    projection.columnIds.zip(fielded.columns.map(_.id)).map { case (p, as) =>
+    projection.columnIds.zip(structure.columns.map(_.id)).map { case (p, as) =>
       sql"${p} AS ${as}"
     }
   )
-}
-
-private def ensureFielded[C](in: SqlColumn[C] | SqlFielded[C]): SqlFielded[C] = {
-  in match {
-    case f: SqlFielded[C] => f
-    case c: SqlColumn[C]  => SqlFielded.PseudoFielded(c)
-  }
 }
 
 /** A Generic select from a [[FromItem]] */
@@ -77,7 +67,7 @@ private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[
   }
 
   protected def basePath: ColumnPath[P, P] = {
-    ColumnPath.make[P](using innerFielded)
+    ColumnPath.make[P](using innerStructure)
   }
 
   override def filter(f: ColumnBasePath[P] => Rep[Boolean]): Select[T, P] = {
@@ -91,13 +81,9 @@ private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[
   override def project[P2](p: ColumnPath[P, P2]): Select[T, P2] = {
     Select(
       from,
-      projection = ColumnPath.concat(projection, p),
+      projection = projection.append(p),
       filters
     )
-  }
-
-  override def map[R0](f: ColumnPath[P, P] => ColumnPath[P, R0]): QueryBuilder[R0] = {
-    project(f(basePath))
   }
 
   override def count()(using cp: ConnectionProvider): Int = {
@@ -107,7 +93,7 @@ private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[
 }
 
 private[usql] object Select {
-  def makeSelect[T](from: FromItem[T]): Select[T, T] = Select(from, from.basePath)
+  def makeSelect[T](from: FromItem[T]): Select[T, T] = Select(from, from.rootPath)
 }
 
 private[usql] case class SimpleTableSelect[T](
@@ -125,10 +111,6 @@ private[usql] case class SimpleTableSelect[T](
     SimpleTableProject(this, p)
   }
 
-  override def map[R0](f: ColumnPath[T, T] => ColumnPath[T, R0]): QueryBuilderForProjectedTable[R0] = {
-    project(f(basePath))
-  }
-
   override def toPreSql: Sql = {
     sql"SELECT ${tabular.columns} FROM ${tabular.table} ${maybeFilterSql}"
   }
@@ -141,10 +123,10 @@ private[usql] case class SimpleTableSelect[T](
   }
 
   override def update(value: T)(using cp: ConnectionProvider): Int = {
-    updatePartly(value, fielded)
+    updatePartly(value, structure)
   }
 
-  def updatePartly[P](value: P, structure: SqlFielded[P])(using cp: ConnectionProvider): Int = {
+  def updatePartly[P](value: P, structure: Structure[P])(using cp: ConnectionProvider): Int = {
     val split  = structure.rowEncoder.toSqlParameter(value)
     val setter = SqlInterpolationParameter.MultipleSeparated(
       structure.columns.zip(split).map { case (column, value) =>
@@ -174,7 +156,7 @@ private[usql] case class SimpleTableSelect[T](
     }
   }
 
-  override def fielded: SqlFielded[T] = tabular
+  override def structure: Structure[T] = tabular
 
   protected def basePath: ColumnPath[T, T] = {
     ColumnPath.make[T](using tabular)
@@ -196,15 +178,11 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
     with QueryBuilderProjected[T, P] {
 
   override def update(value: P)(using cp: ConnectionProvider): Int = {
-    in.updatePartly(value, fielded)
-  }
-
-  override def map[R0](f: ColumnPath[P, P] => ColumnPath[P, R0]): QueryBuilderForProjectedTable[R0] = {
-    project(f(basePath))
+    in.updatePartly(value, structure)
   }
 
   override def project[X](p: ColumnPath[P, X]): QueryBuilderForProjectedTable[X] = {
-    val newProjection = ColumnPath.concat(projection, p)
+    val newProjection = projection.append(p)
     copy(projection = newProjection)
   }
 
@@ -219,7 +197,7 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
 
   override def filter(f: ColumnBasePath[P] => Rep[Boolean]): QueryBuilder[P] = {
     val mappedFilter: ColumnBasePath[T] => Rep[Boolean] = in => {
-      f(ColumnPath.concat(in, projection))
+      f(in.append(projection))
     }
     copy(
       in.copy(
@@ -231,6 +209,4 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
   override def count()(using cp: ConnectionProvider): Int = {
     in.count()
   }
-
-  override protected def basePath: ColumnPath[P, P] = ColumnPath.make[P](using fielded)
 }
