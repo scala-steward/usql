@@ -232,27 +232,6 @@ object SqlFielded {
     }
   }
 
-  case class ConcatFielded[L, R](left: SqlFielded[L], right: SqlFielded[R]) extends SqlFielded[(L, R)] {
-    override def fields: Seq[Field[?]] = {
-      Seq(
-        Field.Group("_1", ColumnGroupMapping.Anonymous, SqlColumnId.fromString(""), left),
-        Field.Group("_2", ColumnGroupMapping.Anonymous, SqlColumnId.fromString(""), right)
-      )
-    }
-
-    override protected[dao] def split(value: (L, R)): Seq[Any] = {
-      Seq(value._1, value._2)
-    }
-
-    override protected[dao] def build(fieldValues: Seq[Any]): (L, R) = {
-      (fieldValues.head.asInstanceOf[L], fieldValues(1).asInstanceOf[R])
-    }
-
-    override def isOptional: Boolean = {
-      false
-    }
-  }
-
   case class WithColumnsRenamed[T](base: SqlFielded[T], columnIds: Seq[SqlColumnId]) extends SqlFielded[T] {
     override lazy val fields: Seq[Field[?]] = {
       var remainingColumns = columnIds // scalafix:ok

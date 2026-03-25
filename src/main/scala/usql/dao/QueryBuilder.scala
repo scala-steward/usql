@@ -1,6 +1,6 @@
 package usql.dao
 
-import usql.{ConnectionProvider, Query, RowDecoder, Sql}
+import usql.{ConnectionProvider, Optionalize, Query, RowDecoder, Sql}
 
 import java.util.UUID
 
@@ -37,7 +37,7 @@ trait QueryBuilder[T] extends Query[T] {
   /** Left Join two Queries */
   def leftJoin[R](right: QueryBuilder[R])(
       on: (ColumnBasePath[T], ColumnBasePath[R]) => Rep[Boolean]
-  ): QueryBuilder[(T, Option[R])]
+  ): QueryBuilder[(T, Optionalize[R])]
 
   /** Converts into a From Item which has an alias. */
   private[usql] def asAliasedFromItem(): FromItem[T] = {

@@ -46,6 +46,12 @@ trait Structure[T] {
 
   /** Convert to SqlFielded, wrapping single columns in PseudoFielded. */
   private[usql] def toFielded: SqlFielded[T]
+
+  /** Set an alias. */
+  def withAlias(aliasName: String): Structure[T]
+
+  /** Drops an alias. */
+  def dropAlias: Structure[T]
 }
 
 object Structure {

@@ -40,6 +40,10 @@ case class SqlColumn[T](
     else copy(id = id.copy(alias = None))
 
   override private[usql] def toFielded: SqlFielded[T] = SqlFielded.PseudoFielded(this)
+
+  override def withAlias(aliasName: String): SqlColumn[T] = copy(id = id.copy(alias = Some(aliasName)))
+
+  override def dropAlias: SqlColumn[T] = copy(id = id.copy(alias = None))
 }
 
 object SqlColumn {

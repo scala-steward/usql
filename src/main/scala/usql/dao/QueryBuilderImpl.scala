@@ -1,6 +1,6 @@
 package usql.dao
 
-import usql.{ConnectionProvider, Sql, SqlInterpolationParameter, sql}
+import usql.{ConnectionProvider, Optionalize, Sql, SqlInterpolationParameter, sql}
 import usql.profiles.BasicProfile.intType
 
 import java.util.UUID
@@ -13,17 +13,17 @@ private[usql] trait QueryBuilderBase[T] extends QueryBuilder[T] {
   ): QueryBuilder[(T, R)] = {
     val leftSource  = this.asAliasedFromItem()
     val rightSource = right.asAliasedFromItem()
-    val joinSource  = FromItem.InnerJoin(leftSource, rightSource, on(leftSource.basePath, rightSource.basePath))
+    val joinSource  = FromItem.InnerJoin(leftSource, rightSource, on(leftSource.rootPath, rightSource.rootPath))
     Select.makeSelect(joinSource)
   }
 
   /** Left Join two Queries */
   def leftJoin[R](right: QueryBuilder[R])(
       on: (ColumnBasePath[T], ColumnBasePath[R]) => Rep[Boolean]
-  ): QueryBuilder[(T, Option[R])] = {
+  ): QueryBuilder[(T, Optionalize[R])] = {
     val leftSource  = this.asAliasedFromItem()
     val rightSource = right.asAliasedFromItem()
-    val joinSource  = FromItem.LeftJoin(leftSource, rightSource, on(leftSource.basePath, rightSource.basePath))
+    val joinSource  = FromItem.LeftJoin(leftSource, rightSource, on(leftSource.rootPath, rightSource.rootPath))
     Select.makeSelect(joinSource)
   }
 }
@@ -93,7 +93,7 @@ private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[
 }
 
 private[usql] object Select {
-  def makeSelect[T](from: FromItem[T]): Select[T, T] = Select(from, from.basePath)
+  def makeSelect[T](from: FromItem[T]): Select[T, T] = Select(from, from.rootPath)
 }
 
 private[usql] case class SimpleTableSelect[T](
