@@ -182,7 +182,7 @@ class QueryBuilderTest extends TestBaseWithH2 {
 
     persons.structure.columns.distinct shouldBe Seq(
       SqlColumn("id", DataType.get[Int]),
-      SqlColumn("id0", DataType.get[Int])
+      SqlColumn("id1", DataType.get[Int])
     )
   }
 

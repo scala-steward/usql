@@ -17,12 +17,6 @@ sealed trait SqlInterpolationParameter {
 
   def serializeSql(s: StringBuilder): Unit
 
-  /** Collect all used aliases. */
-  def collectAliases: Set[String] = Set.empty
-
-  /** Renames aliases. */
-  def mapAliases(map: Map[String, String]): SqlInterpolationParameter = this
-
   /** Collect nested parameters. */
   def parameters: Seq[SqlParameter[?]] = Nil
 }
@@ -58,16 +52,6 @@ object SqlInterpolationParameter {
   /** A single identifier. */
   case class ColumnIdParameter(columnId: SqlColumnId) extends SqlInterpolationParameter {
     override def serializeSql(s: StringBuilder): Unit = columnId.serializeSql(s)
-
-    override def collectAliases: Set[String] = columnId.alias.toSet
-
-    override def mapAliases(map: Map[String, String]): SqlInterpolationParameter = copy(
-      columnId.copy(
-        alias = columnId.alias.map { alias =>
-          map.getOrElse(alias, alias)
-        }
-      )
-    )
   }
 
   case class MultipleSeparated(underlying: Seq[SqlInterpolationParameter], separator: String = ",")
@@ -81,14 +65,6 @@ object SqlInterpolationParameter {
         s ++= separator
         x.serializeSql(s)
       }
-    }
-
-    override def collectAliases: Set[String] = underlying.toSet.flatMap(_.collectAliases)
-
-    override def mapAliases(map: Map[String, String]): SqlInterpolationParameter = {
-      copy(
-        underlying = underlying.map(_.mapAliases(map))
-      )
     }
 
     override def parameters: Seq[SqlParameter[?]] = underlying.flatMap(_.parameters)
@@ -106,10 +82,6 @@ object SqlInterpolationParameter {
       sql.serializeSql(s)
     }
 
-    override def collectAliases: Set[String] = sql.collectAliases
-
-    override def mapAliases(map: Map[String, String]): SqlInterpolationParameter = sql.mapAliases(map)
-
     override def parameters: Seq[SqlParameter[?]] = sql.parameters
   }
 
@@ -123,12 +95,6 @@ object SqlInterpolationParameter {
     override def serializeSql(s: StringBuilder): Unit = {
       s ++= alias
     }
-
-    override def collectAliases: Set[String] = Set(alias)
-
-    override def mapAliases(map: Map[String, String]): AliasParameter = AliasParameter(
-      alias = map.getOrElse(alias, alias)
-    )
   }
 
   /** Empty leaf, so that we have exactly as much interpolation parameters as string parts. */

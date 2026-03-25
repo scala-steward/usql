@@ -4,8 +4,6 @@ import usql.SqlInterpolationParameter.SqlParameter
 import usql.{Optionalize, RowDecoder, RowEncoder, SqlColumnId}
 
 import java.sql.{PreparedStatement, ResultSet}
-import java.util.UUID
-import scala.collection.mutable
 import scala.deriving.Mirror
 import scala.util.NotGiven
 
@@ -104,29 +102,17 @@ trait SqlFielded[T] extends Structure[T] {
    */
   override def ensureUniqueColumnIds(keepAlias: Boolean): SqlFielded[T] = {
     val columnIds       = columns.map(_.id)
-    val inUse           = mutable.Set[SqlColumnId]()
-    val resultColumnIds = Seq.newBuilder[SqlColumnId]
-    columnIds.foreach { columnId =>
-      val baseId  = if keepAlias then {
-        columnId
-      } else {
-        columnId.copy(alias = None)
-      }
-      val idToUse = if inUse.contains(baseId) then {
-        (for
-          idx      <- (0 until 32).view
-          candidate = baseId.copy(name = baseId.name + idx)
-          if !inUse.contains(candidate)
-        yield candidate).headOption.getOrElse {
-          baseId.copy(name = baseId.name + UUID.randomUUID())
-        }
-      } else {
-        baseId
-      }
-      inUse += idToUse
-      resultColumnIds += idToUse
+    val names           = columnIds.map { columnId =>
+      if keepAlias then { columnId.name }
+      else { columnId.copy(alias = None).name }
     }
-    SqlFielded.WithColumnsRenamed(this, resultColumnIds.result())
+    val deduped         = SqlNaming.deduplicateColumnNames(names)
+    val resultColumnIds = columnIds.zip(deduped).map { case (columnId, name) =>
+      val base = if keepAlias then { columnId }
+      else { columnId.copy(alias = None) }
+      base.copy(name = name)
+    }
+    SqlFielded.WithColumnsRenamed(this, resultColumnIds)
   }
 
   override def toField(fieldName: String): Field[T] = {
@@ -291,6 +277,7 @@ object SqlFielded {
       }
     )
   }
+
 }
 
 /** A Field of a case class. */
