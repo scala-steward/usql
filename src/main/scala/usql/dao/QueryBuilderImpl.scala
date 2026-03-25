@@ -7,9 +7,6 @@ import java.util.UUID
 
 private[usql] trait QueryBuilderBase[T] extends QueryBuilder[T] {
 
-  /** Returns the base path fore mapping operations. */
-  protected def basePath: ColumnBasePath[T]
-
   /** Join two queries. */
   def join[R](right: QueryBuilder[R])(
       on: (ColumnBasePath[T], ColumnBasePath[R]) => Rep[Boolean]
@@ -89,10 +86,6 @@ private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[
     )
   }
 
-  override def map[R0](f: ColumnPath[P, P] => ColumnPath[P, R0]): QueryBuilder[R0] = {
-    project(f(basePath))
-  }
-
   override def count()(using cp: ConnectionProvider): Int = {
     val sql = sql"SELECT COUNT (*) FROM ${from.toPreSql} ${maybeFilterSql}".simplifyAliases
     sql.queryOne[Int]().getOrElse(0)
@@ -116,10 +109,6 @@ private[usql] case class SimpleTableSelect[T](
 
   override def project[P](p: ColumnPath[T, P]): QueryBuilderForProjectedTable[P] = {
     SimpleTableProject(this, p)
-  }
-
-  override def map[R0](f: ColumnPath[T, T] => ColumnPath[T, R0]): QueryBuilderForProjectedTable[R0] = {
-    project(f(basePath))
   }
 
   override def toPreSql: Sql = {
@@ -192,10 +181,6 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
     in.updatePartly(value, structure)
   }
 
-  override def map[R0](f: ColumnPath[P, P] => ColumnPath[P, R0]): QueryBuilderForProjectedTable[R0] = {
-    project(f(basePath))
-  }
-
   override def project[X](p: ColumnPath[P, X]): QueryBuilderForProjectedTable[X] = {
     val newProjection = projection.append(p)
     copy(projection = newProjection)
@@ -224,6 +209,4 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
   override def count()(using cp: ConnectionProvider): Int = {
     in.count()
   }
-
-  override protected def basePath: ColumnPath[P, P] = ColumnPath.make[P](using structure)
 }

@@ -63,6 +63,12 @@ sealed trait ColumnPath[R, T] extends Selectable with SqlColumnIdentifying with 
   private[usql] final def append[T2](columnPath: ColumnPath[T, T2]): ColumnPath[R, T2] = columnPath.prepend(this)
 }
 
+/** A Column Path which is at Type T */
+type ColumnBasePath[T] = ColumnPath[?, T]
+
+/** A Column path which is at the root of T */
+type ColumnRootPath[T] = ColumnPath[T, T]
+
 object ColumnPath {
 
   def make[T](using f: Structure[T]): ColumnPath[T, T] = Root(f)

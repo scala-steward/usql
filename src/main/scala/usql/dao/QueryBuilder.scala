@@ -4,8 +4,6 @@ import usql.{ConnectionProvider, Query, RowDecoder, Sql}
 
 import java.util.UUID
 
-type ColumnBasePath[T] = ColumnPath[?, T]
-
 /** A Query Builder based upon filter, map and join methods. */
 trait QueryBuilder[T] extends Query[T] {
 
@@ -21,9 +19,13 @@ trait QueryBuilder[T] extends Query[T] {
   def structure: Structure[T]
 
   /** Map one element. */
-  def map[R0](f: ColumnPath[T, T] => ColumnPath[T, R0]): QueryBuilder[R0]
+  def map[P](f: ColumnRootPath[T] => ColumnPath[T, P]): QueryBuilder[P] = {
+    project(f(columnRootPath))
+  }
 
-  /** Project values. */
+  protected def columnRootPath: ColumnRootPath[T] = ColumnPath.make(using structure)
+
+  /** Project using a Column Path */
   def project[P](p: ColumnPath[T, P]): QueryBuilder[P]
 
   /** Filter step. */
@@ -53,7 +55,9 @@ trait QueryBuilderForProjectedTable[T] extends QueryBuilder[T] {
   /** Update elements. */
   def update(in: T)(using cp: ConnectionProvider): Int
 
-  override def map[R0](f: ColumnPath[T, T] => ColumnPath[T, R0]): QueryBuilderForProjectedTable[R0]
+  override def map[P](f: ColumnPath[T, T] => ColumnPath[T, P]): QueryBuilderForProjectedTable[P] = {
+    project(f(columnRootPath))
+  }
 
   override def project[P](p: ColumnPath[T, P]): QueryBuilderForProjectedTable[P]
 }
