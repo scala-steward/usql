@@ -3,17 +3,16 @@ package usql.dao
 import usql.{ConnectionProvider, Optionalize, Sql, SqlInterpolationParameter, sql}
 import usql.profiles.BasicProfile.intType
 
-import java.util.UUID
-
 private[usql] trait QueryBuilderBase[T] extends QueryBuilder[T] {
 
   /** Join two queries. */
   def join[R](right: QueryBuilder[R])(
       on: (ColumnBasePath[T], ColumnBasePath[R]) => Rep[Boolean]
   ): QueryBuilder[(T, R)] = {
-    val leftSource  = this.asAliasedFromItem()
-    val rightSource = right.asAliasedFromItem()
-    val joinSource  = FromItem.InnerJoin(leftSource, rightSource, on(leftSource.rootPath, rightSource.rootPath))
+    given SqlNaming.AliasScope = SqlNaming.AliasScope()
+    val leftSource             = this.asAliasedFromItem
+    val rightSource            = right.asAliasedFromItem
+    val joinSource             = FromItem.InnerJoin(leftSource, rightSource, on(leftSource.rootPath, rightSource.rootPath))
     Select.makeSelect(joinSource)
   }
 
@@ -21,9 +20,10 @@ private[usql] trait QueryBuilderBase[T] extends QueryBuilder[T] {
   def leftJoin[R](right: QueryBuilder[R])(
       on: (ColumnBasePath[T], ColumnBasePath[R]) => Rep[Boolean]
   ): QueryBuilder[(T, Optionalize[R])] = {
-    val leftSource  = this.asAliasedFromItem()
-    val rightSource = right.asAliasedFromItem()
-    val joinSource  = FromItem.LeftJoin(leftSource, rightSource, on(leftSource.rootPath, rightSource.rootPath))
+    given SqlNaming.AliasScope = SqlNaming.AliasScope()
+    val leftSource             = this.asAliasedFromItem
+    val rightSource            = right.asAliasedFromItem
+    val joinSource             = FromItem.LeftJoin(leftSource, rightSource, on(leftSource.rootPath, rightSource.rootPath))
     Select.makeSelect(joinSource)
   }
 }
@@ -56,8 +56,8 @@ private[usql] trait QueryBuilderProjected[T, P] extends QueryBuilder[P] {
 private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[T, P], filters: Seq[Rep[Boolean]] = Nil)
     extends QueryBuilderBase[P]
     with QueryBuilderProjected[T, P] {
-  override def toPreSql: Sql = {
-    sql"SELECT ${projectionString} FROM ${from.toPreSql} ${maybeFilterSql}"
+  override def sql: Sql = {
+    sql"SELECT ${projectionString} FROM ${from.sql} ${maybeFilterSql}"
   }
 
   private val maybeFilterSql: SqlInterpolationParameter = if filters.isEmpty then {
@@ -87,7 +87,7 @@ private[usql] case class Select[T, P](from: FromItem[T], projection: ColumnPath[
   }
 
   override def count()(using cp: ConnectionProvider): Int = {
-    val sql = sql"SELECT COUNT (*) FROM ${from.toPreSql} ${maybeFilterSql}".simplifyAliases
+    val sql = sql"SELECT COUNT (*) FROM ${from.sql} ${maybeFilterSql}"
     sql.queryOne[Int]().getOrElse(0)
   }
 }
@@ -111,7 +111,7 @@ private[usql] case class SimpleTableSelect[T](
     SimpleTableProject(this, p)
   }
 
-  override def toPreSql: Sql = {
+  override def sql: Sql = {
     sql"SELECT ${tabular.columns} FROM ${tabular.table} ${maybeFilterSql}"
   }
 
@@ -162,12 +162,14 @@ private[usql] case class SimpleTableSelect[T](
     ColumnPath.make[T](using tabular)
   }
 
-  override private[usql] def asAliasedFromItem(): FromItem[T] = {
+  override private[usql] def preferredAliasBase: String = SqlNaming.sanitizeAliasBase(tabular.table.name)
+
+  override private[usql] def asAliasedFromItem(using scope: SqlNaming.AliasScope): FromItem[T] = {
     if filters.isEmpty then {
-      val aliasName = s"${tabular.table.name}-${UUID.randomUUID()}"
+      val aliasName = scope.allocate(preferredAliasBase)
       FromItem.Aliased(FromItem.FromTable(tabular), aliasName)
     } else {
-      super.asAliasedFromItem()
+      super.asAliasedFromItem
     }
   }
 }
@@ -176,6 +178,8 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
     extends QueryBuilderForProjectedTable[P]
     with QueryBuilderBase[P]
     with QueryBuilderProjected[T, P] {
+
+  override private[usql] def preferredAliasBase: String = in.preferredAliasBase
 
   override def update(value: P)(using cp: ConnectionProvider): Int = {
     in.updatePartly(value, structure)
@@ -186,7 +190,7 @@ private[usql] case class SimpleTableProject[T, P](in: SimpleTableSelect[T], proj
     copy(projection = newProjection)
   }
 
-  override def toPreSql: Sql = {
+  override def sql: Sql = {
     in.appliedFilters match {
       case Some(f) => sql"WHERE ${f.toInterpolationParameter}"
       case None    => SqlInterpolationParameter.Empty

@@ -2,18 +2,13 @@ package usql.dao
 
 import usql.{ConnectionProvider, Optionalize, Query, RowDecoder, Sql}
 
-import java.util.UUID
-
 /** A Query Builder based upon filter, map and join methods. */
 trait QueryBuilder[T] extends Query[T] {
 
   /** Convert this query to SQL. */
-  final def sql: Sql = toPreSql.simplifyAliases
+  def sql: Sql
 
   override def rowDecoder: RowDecoder[T] = structure.rowDecoder
-
-  /** Convert this query to SQL (before End-Optimizations) */
-  private[usql] def toPreSql: Sql
 
   /** Structure of the result. */
   def structure: Structure[T]
@@ -39,9 +34,12 @@ trait QueryBuilder[T] extends Query[T] {
       on: (ColumnBasePath[T], ColumnBasePath[R]) => Rep[Boolean]
   ): QueryBuilder[(T, Optionalize[R])]
 
+  /** Preferred readable base name for joining this query as a source. */
+  private[usql] def preferredAliasBase: String = "q"
+
   /** Converts into a From Item which has an alias. */
-  private[usql] def asAliasedFromItem(): FromItem[T] = {
-    val aliasName = s"X-${UUID.randomUUID()}"
+  private[usql] def asAliasedFromItem(using scope: SqlNaming.AliasScope): FromItem[T] = {
+    val aliasName = scope.allocate(preferredAliasBase)
     FromItem.Aliased(FromItem.SubSelect(this), aliasName)
   }
 
