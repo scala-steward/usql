@@ -80,8 +80,6 @@ object Person extends KeyedCrudBase[Int, Person] {
   override def key: KeyColumnPath = cols.id
 
   override def keyOf(value: Person): Int = value.id
-
-  override lazy val tabular: SqlTabular[Person] = summon
 }
 
 println(s"All Persons: ${Person.findAll()}")

@@ -178,8 +178,6 @@ object Person extends KeyedCrudBase[Int, Person] {
   override def key: KeyColumnPath = cols.id
 
   override def keyOf(value: Person): Int = value.id
-
-  override lazy val tabular: SqlTabular[Person] = summon
 }
 
 println(s"All Persons: ${Person.findAll()}")
@@ -188,6 +186,47 @@ Person.insert(Person(6, "Fritz"))
 Person.update(Person(6, "Franziska"))
 println(Person.findByKey(6)) // Person(6, Franziska)
 ```
+
+### Remarks
+
+You can not use a directly derived `SqlTabular` in a nested class. The Scala Compiler
+may crash with
+
+```
+assertion failed: missing outer accessor in [Outer class Name]
+```
+
+You can work around, by defering the initialization of SqlTabular.
+
+Instead of 
+
+```scala
+class Outer {
+  case class Foo(
+      // Fields
+  ) derives SqlTabular
+  
+  object Foo extends KeyedCrudBase[Int, Foo]
+}
+```
+
+write
+
+```scala
+class Outer {
+  case class Foo(
+      // Fields
+  )
+  
+  given fooTabular: SqlTabular[Foo] = SqlTabular.derived
+  
+  object Foo extends KeyedCrudBase[Int, Foo]
+}
+
+Scala bug is https://github.com/scala/scala3/issues/22704
+
+```
+ 
 
 ## Named Tuples
 

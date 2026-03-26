@@ -24,23 +24,23 @@ class SimpleJoinTest extends TestBaseWithH2 {
       id: Int,
       name: String,
       levelId: Option[Int] = None
-  ) derives SqlTabular
+  )
+
+  given personSqlTabular: SqlTabular[Person] = SqlTabular.derived
 
   object Person extends KeyedCrudBase[Int, Person] {
     override def key: KeyColumnPath = cols.id
-
-    override lazy val tabular: SqlTabular[Person] = summon
   }
 
   case class Level(
       id: Int,
       levelName: String
-  ) derives SqlTabular
+  )
+
+  given levelSqlTabular: SqlTabular[Level] = SqlTabular.derived
 
   object Level extends KeyedCrudBase[Int, Level] {
     override def key: KeyColumnPath = cols.id
-
-    override lazy val tabular: SqlTabular[Level] = summon
   }
 
   trait Env {

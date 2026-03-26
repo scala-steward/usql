@@ -20,7 +20,9 @@ class RepTest extends TestBaseWithH2 {
       price: Int,
       discount: Option[Int] = None,
       description: Option[String] = None
-  ) derives SqlTabular
+  )
+
+  given fileItemTabular: SqlTabular[Item] = SqlTabular.derived
 
   object Item extends KeyedCrudBase[Int, Item] {
     override def key: KeyColumnPath = cols.id

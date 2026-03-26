@@ -23,8 +23,6 @@ class KeyedCrudBaseTest extends TestBaseWithH2 {
 
   object UserCrd extends KeyedCrudBase[Int, User] {
     override def key: KeyColumnPath = cols.id
-
-    override lazy val tabular: SqlTabular[User] = summon
   }
 
   val sample1 = User(1, Some("Alice"), Some(42))
