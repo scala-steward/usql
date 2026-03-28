@@ -51,7 +51,7 @@ ThisBuild / scalacOptions ++= Seq(
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
-val scalaTestVersion = "3.2.19"
+val scalaTestVersion = "3.2.20"
 
 lazy val root = (project in file("."))
   .settings(
