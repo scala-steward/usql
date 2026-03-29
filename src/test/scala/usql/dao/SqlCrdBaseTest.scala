@@ -22,11 +22,11 @@ class SqlCrdBaseTest extends TestBaseWithH2 {
       |);
       |""".stripMargin
 
-  case class Coordinate(id: Int, x: Int, y: Int) derives SqlTabular
+  case class Coordinate(id: Int, x: Int, y: Int)
 
-  object CoordinateCrd extends CrdBase[Coordinate] {
-    override lazy val tabular: SqlTabular[Coordinate] = summon
-  }
+  given coordinateSqlTabular: SqlTabular[Coordinate] = SqlTabular.derived
+
+  object CoordinateCrd extends CrdBase[Coordinate]
 
   val sample  = Coordinate(0, 5, 6)
   val samples = Seq(
@@ -61,12 +61,12 @@ class SqlCrdBaseTest extends TestBaseWithH2 {
       from: SubCoord,
       @ColumnGroup(ColumnGroupMapping.Pattern("%c_to"))
       to: SubCoord
-  ) derives SqlTabular
+  )
+
+  given withSubCoordsSqlTabular: SqlTabular[WithSubCoords] = SqlTabular.derived
 
   object WithSubCoords extends KeyedCrudBase[Int, WithSubCoords] {
     override def key: KeyColumnPath = cols.id
-
-    override lazy val tabular: SqlTabular[WithSubCoords] = summon
   }
 
   it should "work for nested columns" in {

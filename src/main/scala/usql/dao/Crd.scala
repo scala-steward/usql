@@ -48,17 +48,14 @@ trait KeyedCrud[T] extends Crd[T] {
 }
 
 /** Implementation of Crd for Tabular data. */
-abstract class CrdBase[T] extends Crd[T] {
+abstract class CrdBase[T](using _tabular: => SqlTabular[T]) extends Crd[T] {
 
   protected given pf: RowEncoder[T] = tabular.rowEncoder
 
   protected given rd: RowDecoder[T] = tabular.rowDecoder
 
-  /**
-   * Define the referenced tabular, usually implemented using `summon`. We would like to have it as a parameter, but
-   * this leads to this error https://github.com/scala/scala3/issues/22704 even when using lazy parameters.
-   */
-  lazy val tabular: SqlTabular[T]
+  /** The tabular instance. */
+  def tabular: SqlTabular[T] = _tabular
 
   /** Gives access to an aliased view. */
   def alias(name: String): Alias[T] = tabular.alias(name)
@@ -104,7 +101,9 @@ abstract class CrdBase[T] extends Crd[T] {
 }
 
 /** Implementation of KeyedCrd for KeyedTabular data. */
-abstract class KeyedCrudBase[K, T](using keyDataType: DataType[K]) extends CrdBase[T] with KeyedCrud[T] {
+abstract class KeyedCrudBase[K, T](using keyDataType: DataType[K], _tabular: => SqlTabular[T])
+    extends CrdBase[T]
+    with KeyedCrud[T] {
 
   override type Key = K
 

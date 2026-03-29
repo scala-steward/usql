@@ -8,7 +8,9 @@ class SqlFieldedTest extends TestBase {
   case class Coordinate(
       x: Int,
       y: Int
-  ) derives SqlFielded
+  )
+
+  given coordinateSqlTabular: SqlTabular[Coordinate] = SqlTabular.derived
 
   @TableName("test_person")
   case class Person(
@@ -20,12 +22,12 @@ class SqlFieldedTest extends TestBase {
       coordinate: Coordinate,
       @ColumnGroup
       ocoordinate: Option[Coordinate] = None
-  ) derives SqlTabular
+  )
+
+  given personSqlTabular: SqlTabular[Person] = SqlTabular.derived
 
   object Person extends KeyedCrudBase[Int, Person] {
     override def key: KeyColumnPath = cols.id
-
-    override lazy val tabular: SqlTabular[Person] = summon
   }
 
   it should "work" in {

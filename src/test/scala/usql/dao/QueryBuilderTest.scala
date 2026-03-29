@@ -35,33 +35,33 @@ class QueryBuilderTest extends TestBaseWithH2 {
       id: Int,
       name: String,
       age: Option[Int] = None
-  ) derives SqlTabular
+  )
+
+  given personSqlTabular: SqlTabular[Person] = SqlTabular.derived
 
   object Person extends KeyedCrudBase[Int, Person] {
     override def key: KeyColumnPath = cols.id
-
-    override lazy val tabular: SqlTabular[Person] = summon
   }
 
   case class Permission(
       id: Int,
       name: String
-  ) derives SqlTabular
+  )
+
+  given permissionSqlTabular: SqlTabular[Permission] = SqlTabular.derived
 
   object Permission extends KeyedCrudBase[Int, Permission] {
     override def key: KeyColumnPath = cols.id
-
-    override lazy val tabular: SqlTabular[Permission] = summon
   }
 
   case class PersonPermission(
       personId: Int,
       permissionId: Int
-  ) derives SqlTabular
+  )
 
-  object PersonPermission extends CrdBase[PersonPermission] {
-    override lazy val tabular: SqlTabular[PersonPermission] = summon
-  }
+  given personPermissionSqlTabular: SqlTabular[PersonPermission] = SqlTabular.derived
+
+  object PersonPermission extends CrdBase[PersonPermission]
 
   trait EnvWithSamples {
     val alice  = Person(1, "Alice", Some(42))
@@ -214,12 +214,12 @@ class QueryBuilderTest extends TestBaseWithH2 {
       name: String,
       @ColumnGroup coordinate: Coordinate,
       @ColumnGroup secondaryCoordinate: Option[Coordinate] = None
-  ) derives SqlTabular
+  )
+
+  given locationSqlTabular: SqlTabular[Location] = SqlTabular.derived
 
   object Location extends KeyedCrudBase[Int, Location] {
     override def key: KeyColumnPath = cols.id
-
-    override lazy val tabular: SqlTabular[Location] = summon
   }
 
   it should "work with joins on tables with embedded column groups" in new EnvWithSamples {
