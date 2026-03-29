@@ -6,6 +6,8 @@ to simplify writing SQL typical Actions in the age of direct style scala.
 Note: this is Beta software. Only Postgres and H2 are supported yet (although it's 
 easy to write more Profiles).
 
+**[Scalar 2026 Presentation: Named Tuples in Action](https://github.com/nob13/scalar_named_tuple)**
+
 ## Installation
 
 Version Matrix
