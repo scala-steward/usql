@@ -1,8 +1,10 @@
 package usql.dao
 
-import usql.dao.Rep.{IsNumber, IsString, SqlRep}
-import usql.{DataType, SqlInterpolationParameter, SqlParameters, Sql, UnOption, sql}
+import usql.dao.Rep.{IsNumber, IsOrdered, IsString, SqlRep}
+import usql.{DataType, Sql, SqlInterpolationParameter, SqlParameters, UnOption, sql}
 
+import java.sql.Timestamp
+import java.time.Instant
 import scala.annotation.unused
 import scala.language.implicitConversions
 
@@ -18,19 +20,19 @@ trait Rep[T] {
     SqlRep(sql"${toInterpolationParameter} <> ${rep.toInterpolationParameter}")
   }
 
-  def <(using IsNumber[T])(rep: Rep[T]): Rep[Boolean] = {
+  def <(using IsOrdered[T])(rep: Rep[T]): Rep[Boolean] = {
     SqlRep(sql"${toInterpolationParameter} < ${rep.toInterpolationParameter}")
   }
 
-  def >(using IsNumber[T])(rep: Rep[T]): Rep[Boolean] = {
+  def >(using IsOrdered[T])(rep: Rep[T]): Rep[Boolean] = {
     SqlRep(sql"${toInterpolationParameter} > ${rep.toInterpolationParameter}")
   }
 
-  def <=(using IsNumber[T])(rep: Rep[T]): Rep[Boolean] = {
+  def <=(using IsOrdered[T])(rep: Rep[T]): Rep[Boolean] = {
     SqlRep(sql"${toInterpolationParameter} <= ${rep.toInterpolationParameter}")
   }
 
-  def >=(using IsNumber[T])(rep: Rep[T]): Rep[Boolean] = {
+  def >=(using IsOrdered[T])(rep: Rep[T]): Rep[Boolean] = {
     SqlRep(sql"${toInterpolationParameter} >= ${rep.toInterpolationParameter}")
   }
 
@@ -136,7 +138,16 @@ object Rep {
     given double: IsNumber[Double] with         {}
     given bigDecimal: IsNumber[BigDecimal] with {}
 
-    given opt[T](using IsNumber[T]): IsNumber[Option[T]] with {}
+    given opt[T: IsNumber]: IsNumber[Option[T]] with {}
+  }
+
+  trait IsOrdered[T]
+  object IsOrdered {
+    given num[T: IsNumber]: IsOrdered[T] with          {}
+    given instant: IsOrdered[Instant] with             {}
+    given string: IsOrdered[String] with               {}
+    given timestamp: IsOrdered[Timestamp] with         {}
+    given opt[T: IsOrdered]: IsOrdered[Option[T]] with {}
   }
 
   /** T is a string SQL type. */
