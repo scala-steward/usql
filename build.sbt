@@ -37,7 +37,7 @@ def publishSettings = Seq(
 
 ThisBuild / version      := artefactVersion
 ThisBuild / organization := "net.reactivecore"
-ThisBuild / scalaVersion := "3.8.2"
+ThisBuild / scalaVersion := "3.8.3"
 ThisBuild / Test / fork  := true
 ThisBuild / scalacOptions ++= Seq(
   "-new-syntax",
