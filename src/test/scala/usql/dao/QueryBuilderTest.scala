@@ -129,6 +129,33 @@ class QueryBuilderTest extends TestBaseWithH2 {
     foo.count() shouldBe 3
   }
 
+  it should "support tuple-destructured map after a single join" in new EnvWithSamples {
+    val foo: QueryBuilder[(Person, Int)] = Person.query
+      .join(PersonPermission.query)(_.id === _.personId)
+      .map((p, pp) => (p, pp.permissionId))
+    foo.all() should contain theSameElementsAs Seq(
+      alice -> read.id,
+      alice -> write.id,
+      bob   -> read.id
+    )
+
+    foo.count() shouldBe 3
+  }
+
+  it should "support tuple-destructured map after a left join" in new EnvWithSamples {
+    val q = Person.query
+      .leftJoin(PersonPermission.query)(_.id === _.personId)
+      .leftJoin(Permission.query)(_._2.permissionId === _.id)
+      .map((pp, perm) => (pp._1.name, perm.name))
+
+    q.all() should contain theSameElementsAs Seq(
+      ("Alice", Some("Read")),
+      ("Alice", Some("Write")),
+      ("Bob", Some("Read")),
+      ("Charly", None)
+    )
+  }
+
   it should "with simple joins" in new EnvWithSamples {
     val foo = Person.query
       .join(PersonPermission.query)(_.id === _.personId)
