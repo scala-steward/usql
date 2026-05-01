@@ -18,7 +18,7 @@ trait QueryBuilder[T] extends Query[T] {
     project(f(columnRootPath))
   }
 
-  protected def columnRootPath: ColumnRootPath[T] = ColumnPath.make(using structure)
+  private[usql] def columnRootPath: ColumnRootPath[T] = ColumnPath.make(using structure)
 
   /** Project using a Column Path */
   def project[P](p: ColumnPath[T, P]): QueryBuilder[P]
@@ -74,4 +74,65 @@ object QueryBuilder {
   def make[T](using tabular: SqlTabular[T]): QueryBuilderForTable[T] = {
     SimpleTableSelect(tabular)
   }
+
+  extension [A, B](qb: QueryBuilder[(A, B)])
+    def map[P](
+        f: (ColumnPath[(A, B), A], ColumnPath[(A, B), B]) => ColumnPath[(A, B), P]
+    ): QueryBuilder[P] = {
+      val root = qb.columnRootPath
+      val a    = root.selectDynamic("_1").asInstanceOf[ColumnPath[(A, B), A]]
+      val b    = root.selectDynamic("_2").asInstanceOf[ColumnPath[(A, B), B]]
+      qb.project(f(a, b))
+    }
+
+  extension [A, B, C](qb: QueryBuilder[(A, B, C)])
+    def map[P](
+        f: (
+            ColumnPath[(A, B, C), A],
+            ColumnPath[(A, B, C), B],
+            ColumnPath[(A, B, C), C]
+        ) => ColumnPath[(A, B, C), P]
+    ): QueryBuilder[P] = {
+      val root = qb.columnRootPath
+      val a    = root.selectDynamic("_1").asInstanceOf[ColumnPath[(A, B, C), A]]
+      val b    = root.selectDynamic("_2").asInstanceOf[ColumnPath[(A, B, C), B]]
+      val c    = root.selectDynamic("_3").asInstanceOf[ColumnPath[(A, B, C), C]]
+      qb.project(f(a, b, c))
+    }
+
+  extension [A, B, C, D](qb: QueryBuilder[(A, B, C, D)])
+    def map[P](
+        f: (
+            ColumnPath[(A, B, C, D), A],
+            ColumnPath[(A, B, C, D), B],
+            ColumnPath[(A, B, C, D), C],
+            ColumnPath[(A, B, C, D), D]
+        ) => ColumnPath[(A, B, C, D), P]
+    ): QueryBuilder[P] = {
+      val root = qb.columnRootPath
+      val a    = root.selectDynamic("_1").asInstanceOf[ColumnPath[(A, B, C, D), A]]
+      val b    = root.selectDynamic("_2").asInstanceOf[ColumnPath[(A, B, C, D), B]]
+      val c    = root.selectDynamic("_3").asInstanceOf[ColumnPath[(A, B, C, D), C]]
+      val d    = root.selectDynamic("_4").asInstanceOf[ColumnPath[(A, B, C, D), D]]
+      qb.project(f(a, b, c, d))
+    }
+
+  extension [A, B, C, D, E](qb: QueryBuilder[(A, B, C, D, E)])
+    def map[P](
+        f: (
+            ColumnPath[(A, B, C, D, E), A],
+            ColumnPath[(A, B, C, D, E), B],
+            ColumnPath[(A, B, C, D, E), C],
+            ColumnPath[(A, B, C, D, E), D],
+            ColumnPath[(A, B, C, D, E), E]
+        ) => ColumnPath[(A, B, C, D, E), P]
+    ): QueryBuilder[P] = {
+      val root = qb.columnRootPath
+      val a    = root.selectDynamic("_1").asInstanceOf[ColumnPath[(A, B, C, D, E), A]]
+      val b    = root.selectDynamic("_2").asInstanceOf[ColumnPath[(A, B, C, D, E), B]]
+      val c    = root.selectDynamic("_3").asInstanceOf[ColumnPath[(A, B, C, D, E), C]]
+      val d    = root.selectDynamic("_4").asInstanceOf[ColumnPath[(A, B, C, D, E), D]]
+      val e    = root.selectDynamic("_5").asInstanceOf[ColumnPath[(A, B, C, D, E), E]]
+      qb.project(f(a, b, c, d, e))
+    }
 }
